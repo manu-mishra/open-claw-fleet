@@ -1,0 +1,14 @@
+{
+  "name": "default",
+  "description": "Default agent for Open-Claw-Fleet with documentation hooks",
+  "tools": ["@builtin"],
+  "hooks": {
+    "postToolUse": [
+      {
+        "matcher": "fs_write",
+        "command": "bash",
+        "args": ["-c", "if echo \"$HOOK_EVENT\" | jq -r '.tool_input.path // empty' | grep -q '^infra/'; then cd infra && npm run docs > /dev/null 2>&1 && echo 'Documentation regenerated'; fi"]
+      }
+    ]
+  }
+}

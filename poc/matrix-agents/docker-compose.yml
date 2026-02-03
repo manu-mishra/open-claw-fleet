@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  conduit:
+    image: matrixconduit/matrix-conduit:latest
+    ports:
+      - "6167:6167"
+    environment:
+      CONDUIT_CONFIG: /etc/conduit.toml
+    volumes:
+      - conduit_data:/var/lib/matrix-conduit
+      - ./conduit.toml:/etc/conduit.toml:ro
+    networks:
+      - agent_network
+
+  element:
+    image: vectorim/element-web
+    ports:
+      - "8080:80"
+    volumes:
+      - ./element-config.json:/app/config.json:ro
+    depends_on:
+      - conduit
+    networks:
+      - agent_network
+
+  agent-vp-eng:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    environment:
+      AGENT_ID: vp-eng
+      AGENT_NAME: VP Engineering
+      MATRIX_HOMESERVER: http://conduit:6167
+      MATRIX_USER: vp_eng
+      MATRIX_PASSWORD: vp_password
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+    depends_on:
+      - conduit
+    networks:
+      - agent_network
+    volumes:
+      - agent_vp_data:/root/.openclaw
+      - ~/.aws:/root/.aws:ro
+
+  agent-director:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    environment:
+      AGENT_ID: director
+      AGENT_NAME: Engineering Director
+      MATRIX_HOMESERVER: http://conduit:6167
+      MATRIX_USER: director
+      MATRIX_PASSWORD: director_password
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+    depends_on:
+      - conduit
+    networks:
+      - agent_network
+    volumes:
+      - agent_director_data:/root/.openclaw
+      - ~/.aws:/root/.aws:ro
+
+networks:
+  agent_network:
+    driver: bridge
+
+volumes:
+  conduit_data:
+  agent_vp_data:
+  agent_director_data:

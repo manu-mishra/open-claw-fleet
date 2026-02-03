@@ -1,0 +1,13 @@
+FROM node:22-slim
+RUN apt-get update && apt-get install -y curl git python3 make g++ && rm -rf /var/lib/apt/lists/*
+RUN npm install -g openclaw@latest && npm cache clean --force
+# Fix package.json and install Matrix plugin dependencies with native rebuild
+RUN cd /usr/local/lib/node_modules/openclaw/extensions/matrix && \
+    sed -i 's/"openclaw": "workspace:\*"/"openclaw": "*"/g' package.json && \
+    npm install && npm rebuild
+RUN mkdir -p /root/.openclaw/canvas /root/.openclaw/cron
+ENV AWS_REGION=us-east-1
+EXPOSE 20206
+COPY setup-agent.sh /setup-agent.sh
+RUN chmod +x /setup-agent.sh
+ENTRYPOINT ["/setup-agent.sh"]
