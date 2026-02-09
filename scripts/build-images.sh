@@ -26,7 +26,7 @@ docker build \
   -t openclaw-element:latest \
   -f "$PROJECT_ROOT/docker-files/aws/Dockerfile.element" \
   "$PROJECT_ROOT"
-
+ 
 echo "✅ All images built successfully"
 echo ""
 echo "Images:"

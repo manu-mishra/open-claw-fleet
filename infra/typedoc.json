@@ -1,0 +1,9 @@
+{
+  "entryPoints": ["lib/**/*.ts", "bin/**/*.ts"],
+  "entryPointStrategy": "expand",
+  "out": "../docs",
+  "exclude": ["**/*.test.ts", "**/*.spec.ts"],
+  "excludePrivate": true,
+  "excludeProtected": false,
+  "readme": "../README.md"
+}
