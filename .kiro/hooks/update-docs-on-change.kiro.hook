@@ -1,0 +1,23 @@
+{
+  "enabled": true,
+  "name": "Update Documentation on Source Changes",
+  "description": "Monitors TypeScript source files, CDK infrastructure code, and configuration files. When changes are detected, prompts the agent to verify JSDoc completeness and update external documentation in README.md or /docs folder to keep all documentation synchronized with code changes.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "*.ts",
+      "*.tsx",
+      "infra/lib/*.ts",
+      "infra/bin/*.ts",
+      "cdk.json",
+      "package.json",
+      "infra/package.json",
+      "tsconfig.json"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A source file has been modified. Please perform a comprehensive documentation review:\n\n**JSDOC VERIFICATION (Priority 1):**\n1. Check that ALL modified/new classes, methods, and functions have complete JSDoc comments\n2. Verify JSDoc includes:\n   - Clear description of purpose\n   - @param for each parameter with type and description\n   - @returns for return values with type and description\n   - @example for complex constructs\n   - @throws for error conditions\n3. Ensure JSDoc follows devopsagent standards (no wildcards, explicit types, proper formatting)\n4. Add or update missing JSDoc comments in the modified file\n\n**EXTERNAL DOCUMENTATION (Priority 2):**\n5. If the change affects infrastructure (CDK code in /infra), update /docs or infra/README.md with architectural changes\n6. If the change affects core functionality, update the root README.md\n7. If new features or capabilities were added, document them appropriately\n8. Ensure code examples in documentation remain accurate\n9. Update any affected API documentation\n\nFocus on JSDoc completeness first, then external documentation synchronization."
+  }
+}

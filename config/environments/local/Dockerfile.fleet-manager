@@ -1,0 +1,15 @@
+FROM node:22-slim
+
+WORKDIR /app
+
+# Install docker CLI for container management
+RUN apt-get update && apt-get install -y docker.io && rm -rf /var/lib/apt/lists/*
+
+COPY package*.json ./
+COPY packages/setup/fleet-manager/package*.json ./packages/setup/fleet-manager/
+RUN npm install --workspace=@anycompany/fleet-manager
+
+COPY packages/setup/fleet-manager ./packages/setup/fleet-manager
+RUN npm run build --workspace=@anycompany/fleet-manager
+
+CMD ["node", "packages/setup/fleet-manager/dist/cli.js", "start", "--env", "local"]

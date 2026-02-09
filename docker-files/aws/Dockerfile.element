@@ -1,0 +1,23 @@
+FROM --platform=linux/arm64 vectorim/element-web:latest
+
+USER root
+
+# Copy logo
+COPY docs/img/open-claw-fleet-logo.png /usr/share/nginx/html/logo.png
+
+# Copy custom config to override default
+COPY docker-files/aws/element-config.json /usr/share/nginx/html/config.json
+
+# Create config directory and copy config
+RUN mkdir -p /tmp/element-web-config
+COPY docker-files/aws/element-config.json /tmp/element-web-config/config.json
+COPY docker-files/aws/element-config.json /tmp/element-web-config/config.localhost.json
+RUN chown -R nginx:nginx /tmp/element-web-config
+
+USER nginx
+
+# Set nginx to listen on port 8080
+ENV ELEMENT_WEB_PORT=8080
+
+# Expose port
+EXPOSE 8080

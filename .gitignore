@@ -13,3 +13,7 @@ docs/functions/
 docs/interfaces/
 docs/modules/
 docs/variables/
+config/environments/local/workspaces/
+outputs.json
+node
+open-claw-fleet@1.0.0

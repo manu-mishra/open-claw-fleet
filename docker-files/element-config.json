@@ -1,0 +1,10 @@
+{
+  "default_server_config": {
+    "m.homeserver": {
+      "base_url": "http://conduit.anycompany.corp:6167",
+      "server_name": "anycompany.corp"
+    }
+  },
+  "disable_guests": true,
+  "disable_3pid_login": true
+}

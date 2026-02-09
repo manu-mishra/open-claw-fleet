@@ -1,0 +1,13 @@
+--- a/extensions/matrix/src/matrix/monitor/handler.ts
++++ b/extensions/matrix/src/matrix/monitor/handler.ts
+@@ -442,8 +442,9 @@
+       const messageId = event.event_id ?? "";
+       const replyToEventId = content["m.relates_to"]?.["m.in_reply_to"]?.event_id;
+       const threadRootId = resolveMatrixThreadRootId({ event, content });
++      const effectiveThreadReplies = isDirectMessage ? "off" : threadReplies;
+       const threadTarget = resolveMatrixThreadTarget({
+-        threadReplies,
++        threadReplies: effectiveThreadReplies,
+         messageId,
+         threadRootId,
+         isThreadRoot: false, // @vector-im/matrix-bot-sdk doesn't have this info readily available

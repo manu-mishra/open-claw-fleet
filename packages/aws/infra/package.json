@@ -1,0 +1,30 @@
+{
+  "name": "infra",
+  "version": "0.1.0",
+  "bin": {
+    "infra": "bin/infra.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "cdk": "cdk",
+    "docs": "typedoc",
+    "synth": "cdk synth",
+    "deploy:shared": "cdk deploy --all --require-approval never --context environment=shared",
+    "deploy:dev": "cdk deploy --all --require-approval never --context environment=dev",
+    "deploy:all": "cdk deploy --all --require-approval never",
+    "destroy:dev": "cdk destroy --all --force --context environment=dev"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "aws-cdk": "2.1101.0",
+    "jsdoc": "^4.0.5",
+    "ts-node": "^10.9.2",
+    "typedoc": "^0.28.16",
+    "typescript": "~5.9.3"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.234.1",
+    "constructs": "^10.0.0"
+  }
+}

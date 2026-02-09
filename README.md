@@ -2,7 +2,7 @@
 
 > Deploy thousands of autonomous AI agents in a secure AWS containerized environment
 
-![Open-Claw-Fleet Architecture](img/open-claw-fleet-logo.png)
+![Open-Claw-Fleet Architecture](docs/img/open-claw-fleet-logo.png)
 
 Open-Claw-Fleet enables organizations to run entire teams of [OpenClaw](https://openclaw.ai) AI agents on AWS ECS, creating a scalable, autonomous workforce that operates 24/7 in isolated, secure containers.
 
@@ -60,7 +60,6 @@ Traditional AI assistants are limited to single-user, single-session interaction
 │  ┌────────────────────────────────────────────────┐   │
 │  │         Supporting Infrastructure               │   │
 │  │  - VPC with private/public subnets              │   │
-│  │  - Application Load Balancer                    │   │
 │  │  - EFS for persistent agent memory              │   │
 │  │  - CloudWatch for monitoring & logs             │   │
 │  │  - Secrets Manager for credentials              │   │
@@ -104,7 +103,6 @@ Deploy a complete company structure as AI agents:
 - **Persistent Memory**: EFS-backed storage ensures agents remember context across restarts
 - **Multi-Channel Communication**: Agents connect to Slack, Discord, email, and other platforms
 - **Role-Based Access**: IAM policies and security groups enforce agent permissions
-- **Auto-Scaling**: Scale agent count based on workload
 - **Monitoring**: CloudWatch integration for logs, metrics, and alerts
 - **Infrastructure as Code**: AWS CDK for reproducible deployments
 
@@ -112,16 +110,27 @@ Deploy a complete company structure as AI agents:
 
 ```
 open-claw-fleet/
-├── packages/           # Workspace packages (future agent configurations)
-├── infra/             # AWS CDK infrastructure code
-│   ├── bin/           # CDK app entry point
-│   ├── lib/           # Stack definitions
-│   └── package.json   # Infrastructure dependencies
-├── scripts/           # Deployment and utility scripts
-├── sample/            # Sample configurations and examples
-│   └── openclaw/      # OpenClaw reference implementation
-└── README.md          # This file
+├── config/                 # Environments, templates, local compose
+│   ├── templates/          # Shared templates + skills
+│   └── environments/       # Per-env config + workspaces
+├── packages/               # Workspace packages
+│   ├── setup/
+│   │   ├── fleet-config/   # TUI for editing config.yaml
+│   │   ├── fleet-manager/  # Generator + orchestrator
+│   │   └── agent-runtime/  # Container entrypoint per agent
+│   ├── plugins/
+│   │   └── people/         # Org directory tool
+│   └── aws/
+│       └── infra/          # AWS CDK infrastructure code
+├── docs/                   # Project documentation
+├── sample/                 # Reference only (do not modify)
+└── poc/                    # Proof of concepts (do not modify)
 ```
+
+## Important Notes
+
+- `poc/` is reference only and must not be modified.
+- `sample/` is reference only and must not be modified.
 
 ## Prerequisites
 
@@ -129,57 +138,155 @@ open-claw-fleet/
 - **Node.js** ≥ 20.0.0
 - **AWS CDK** CLI installed (`npm install -g aws-cdk`)
 - **Docker** for local testing
-- **AWS CLI** configured with credentials
+- **AWS CLI + Session Manager Plugin** (required by `fleet-connect`; no manual CLI steps)
+
+## Documentation
+
+📚 **[Complete Documentation](docs/README.md)**
+
+### Quick Links
+
+- **[Architecture](docs/architecture.md)** - System design and AWS components
+- **[Deployment Guide](docs/deployment-guide.md)** - Step-by-step AWS deployment
+- **[AWS Setup](docs/aws-environment-setup.md)** - Configuration and secrets management
+- **[Agent Deployment](docs/findings/agent-deployment.md)** - Challenges, solutions, and lessons learned
+- **[Troubleshooting](docs/TROUBLESHOOTING.md)** - Common issues and solutions
 
 ## Quick Start
 
 ### 1. Clone and Install
 
 ```bash
-git clone https://github.com/yourusername/open-claw-fleet.git
+git clone https://github.com/manu-mishra/open-claw-fleet.git
 cd open-claw-fleet
 npm install
 ```
 
-### 2. Configure Infrastructure
+### 2. Deploy to AWS
 
 ```bash
-cd infra
-npm install
+# Deploy infrastructure (builds and pushes all images)
+./scripts/deploy-aws-env.sh
 ```
 
-### 3. Deploy to AWS
+This deploys:
+- Shared stack: ECR repositories
+- Dev stack: VPC, ECS cluster, services (Conduit, Element, Fleet Manager)
+- All services start at `desiredCount: 1`
+- Fleet Manager handles agent lifecycle (no manual scaling required)
+
+### 3. Connect to Element UI
 
 ```bash
-# Bootstrap CDK (first time only)
-cdk bootstrap
-
-# Deploy the stack
-cdk deploy
+# Single command to connect to all services
+npm run fleet:connect
 ```
 
-### 4. Configure Agents
+Then open: **http://localhost:8080**
 
-(Coming soon: Agent configuration and deployment workflows)
+You'll see the **Open-Claw-Fleet-Command-Center** with custom branding!
+
+### 4. Local Development (Matrix + Fleet Manager)
+
+```bash
+# Build workspace packages
+npm run build
+
+# Build agent image
+docker build -t openclaw-agent:latest -f config/environments/local/Dockerfile.agent .
+
+# Set runtime env
+export FLEET_SECRET=test123
+export HOST_ROOT="$(pwd)"
+
+# Optional: set AWS credentials if using Bedrock (via environment variables)
+
+# Start local stack
+cd config/environments/local
+docker compose up -d
+```
+
+Or use the helper script:
+
+```bash
+scripts/local-fleet.sh up
+```
+
+## Tools
+
+### Fleet Connect (`npm run fleet:connect`)
+
+Automatically connects to AWS-deployed services via SSM port forwarding:
+- Discovers bastion and service IPs
+- Forwards Conduit (Matrix) and Element (UI) ports
+- Single process, graceful shutdown
+- Located in `packages/tools/fleet-connect/`
+
+### Fleet Config (`npm run fleet:config`)
+
+Terminal UI for editing fleet configuration:
+- Manage agent definitions
+- Configure workspaces
+- Edit Matrix settings
+- Located in `packages/setup/fleet-config/`
 
 ## Roadmap
 
-- [ ] Base ECS cluster infrastructure
-- [ ] Container definitions for OpenClaw agents
-- [ ] EFS integration for persistent storage
-- [ ] Multi-agent communication patterns
+- [x] Base ECS cluster infrastructure
+- [x] Container definitions for OpenClaw agents
+- [x] EFS integration for persistent storage
+- [x] Multi-agent communication patterns (Matrix/Conduit)
+- [x] Custom branding (Open-Claw-Fleet-Command-Center)
+- [x] SSM-based secure access (fleet-connect tool)
+- [x] Deterministic password derivation for agents
+- [x] Agent deployment and Matrix authentication
+- [x] OpenClaw gateway running in containers
+- [ ] Agent health monitoring and auto-restart
 - [ ] Role-based agent templates (CEO, VP, Manager, etc.)
-- [ ] Messaging platform integrations
+- [ ] Messaging platform integrations (WhatsApp, Telegram, Discord)
 - [ ] Monitoring and observability dashboards
 - [ ] Auto-scaling policies
-- [ ] Cost optimization strategies
-- [ ] Agent orchestration and coordination
 - [ ] Web UI for fleet management
 
 ## Proof of Concepts
 
-### [Matrix Agent Communication](poc/matrix-agents/)
-Demonstrates multiple OpenClaw agents in separate Docker containers communicating via Matrix protocol. Verified working with Bedrock LLM (GPT OSS, Claude).
+### [Matrix Agent Communication](poc/matrix-agents/) ✅ VERIFIED WORKING
+
+Multi-agent AI system using OpenClaw in Docker containers communicating via Matrix protocol.
+
+**What's Working:**
+- Agents register and communicate via Matrix (Conduit server)
+- Auto-created rooms based on org hierarchy (#executive-team, #engineering-leadership)
+- People directory plugin for org lookups (1001 employees)
+- Agent-to-agent conversations (VP ↔ Director)
+- GPT OSS and Claude Haiku models via Amazon Bedrock
+
+**Agents Deployed:**
+| Agent | Role | Matrix ID |
+|-------|------|-----------|
+| Braxton Roberts | VP of Engineering | @braxton.roberts:anycompany.corp |
+| Dylan Thomas | Director of Platform | @dylan.thomas:anycompany.corp |
+| Manu Mishra | CEO (human) | @manu.mishra:anycompany.corp |
+
+**Quick Start:**
+```bash
+cd poc/matrix-agents
+# Set AWS credentials in your environment if using Bedrock
+cat > .env << 'EOF'
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
+AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN
+EOF
+docker compose up -d
+# Register CEO user
+curl -s -X POST "http://localhost:6167/_matrix/client/r0/register" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"manu.mishra","password":"ceo123","auth":{"type":"m.login.dummy"}}'
+# Access Element at http://localhost:8080
+```
+
+See [poc/matrix-agents/README.md](poc/matrix-agents/README.md) for full documentation.
 
 ## Security Considerations
 
@@ -192,21 +299,6 @@ Running autonomous AI agents at scale requires careful security planning:
 - **Audit Logging**: CloudTrail and CloudWatch for compliance
 - **Approval Workflows**: Human-in-the-loop for sensitive operations
 
-## Cost Estimation
-
-Costs vary based on:
-- Number of concurrent agents
-- Container size (CPU/memory)
-- EFS storage usage
-- Data transfer
-- LLM API calls (OpenAI, Anthropic, etc.)
-
-Example: 100 agents running 24/7 on Fargate with 0.5 vCPU and 1GB memory:
-- ECS Fargate: ~$1,500/month
-- EFS Storage: ~$30/month (100GB)
-- Data Transfer: Variable
-- LLM API Costs: Variable (depends on usage)
-
 ## Contributing
 
 Contributions are welcome! This is an open-source project aimed at democratizing access to autonomous AI agent infrastructure.
@@ -217,7 +309,6 @@ Contributions are welcome! This is an open-source project aimed at democratizing
 - Agent templates and configurations
 - Documentation and examples
 - Security enhancements
-- Cost optimization strategies
 - Integration with additional services
 
 ## License

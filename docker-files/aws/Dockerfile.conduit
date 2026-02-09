@@ -1,0 +1,7 @@
+FROM --platform=linux/arm64 matrixconduit/matrix-conduit:latest
+
+# Copy config file
+COPY docker-files/aws/conduit.toml /etc/conduit.toml
+
+# Set config path
+ENV CONDUIT_CONFIG=/etc/conduit.toml

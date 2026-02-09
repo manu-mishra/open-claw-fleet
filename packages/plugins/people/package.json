@@ -1,0 +1,22 @@
+{
+  "name": "@anycompany/people",
+  "version": "1.0.0",
+  "description": "OpenClaw plugin for company directory",
+  "main": "dist/index.js",
+  "openclaw": {
+    "id": "people",
+    "extensions": [
+      "./dist/index.js"
+    ]
+  },
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@sinclair/typebox": "^0.32.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0"
+  }
+}

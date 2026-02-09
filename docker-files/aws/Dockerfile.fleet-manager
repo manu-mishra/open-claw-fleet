@@ -1,0 +1,24 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+COPY packages/setup/fleet-manager/package*.json ./packages/setup/fleet-manager/
+
+# Install dependencies
+RUN npm install --workspace=@anycompany/fleet-manager
+
+# Copy source
+COPY packages/setup/fleet-manager ./packages/setup/fleet-manager
+
+# Build
+RUN npm run build --workspace=@anycompany/fleet-manager
+
+# Install AWS CLI for ECS operations
+RUN apk add --no-cache aws-cli
+
+# EFS mount point for config
+VOLUME /app/config
+
+CMD ["node", "packages/setup/fleet-manager/dist/cli.js", "start", "--env", "aws"]

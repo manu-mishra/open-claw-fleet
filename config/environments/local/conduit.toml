@@ -1,0 +1,13 @@
+[global]
+server_name = "anycompany.corp"
+database_backend = "rocksdb"
+database_path = "/var/lib/matrix-conduit/"
+port = 6167
+address = "0.0.0.0"
+allow_registration = true
+allow_federation = false
+allow_check_for_updates = false
+trusted_servers = []
+max_request_size = 20_000_000
+max_concurrent_requests = 100
+log = "warn,rocket=off,_=off,sled=off"

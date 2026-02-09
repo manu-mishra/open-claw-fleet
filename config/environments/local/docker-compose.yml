@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  conduit:
+    image: matrixconduit/matrix-conduit:latest
+    ports:
+      - "6167:6167"
+    environment:
+      CONDUIT_CONFIG: /etc/conduit.toml
+    volumes:
+      - conduit_data:/var/lib/matrix-conduit
+      - ./conduit.toml:/etc/conduit.toml:ro
+    networks:
+      - fleet
+
+  element:
+    image: vectorim/element-web
+    ports:
+      - "8080:80"
+    volumes:
+      - ./element-config.json:/app/config.json:ro
+    depends_on:
+      - conduit
+    networks:
+      - fleet
+
+  fleet-manager:
+    build:
+      context: ../../..
+      dockerfile: config/environments/local/Dockerfile.fleet-manager
+    environment:
+      FLEET_SECRET: ${FLEET_SECRET}
+      HOST_ROOT: ${HOST_ROOT:-/Users/manumishra/Projects/open-claw-fleet}
+      HOST_HOME: ${HOST_HOME:-/Users/manumishra}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_PROFILE: ${AWS_PROFILE}
+      AWS_SDK_LOAD_CONFIG: ${AWS_SDK_LOAD_CONFIG:-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ../../..:/app
+    working_dir: /app
+    depends_on:
+      - conduit
+    networks:
+      - fleet
+
+networks:
+  fleet:
+    driver: bridge
+
+volumes:
+  conduit_data:

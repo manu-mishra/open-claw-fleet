@@ -1,0 +1,23 @@
+FROM node:22
+RUN npm install -g openclaw@latest && npm cache clean --force
+
+# Fix Matrix plugin
+RUN cd /usr/local/lib/node_modules/openclaw/extensions/matrix && \
+    sed -i 's/"openclaw": "workspace:\*"/"openclaw": "*"/g' package.json && \
+    npm install && npm rebuild
+
+# Install people plugin
+COPY packages/people /opt/plugins/people
+RUN cd /opt/plugins/people && npm install --production
+
+# Install matrix-config (link to people package)
+COPY packages/matrix-config /opt/matrix-config
+RUN cd /opt/matrix-config && \
+    npm install --production && \
+    npm link /opt/plugins/people
+
+RUN mkdir -p /root/.openclaw/canvas /root/.openclaw/cron
+ENV AWS_REGION=us-east-1
+EXPOSE 20206
+
+ENTRYPOINT ["node", "/opt/matrix-config/dist/index.js"]

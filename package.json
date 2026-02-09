@@ -3,7 +3,22 @@
   "version": "1.0.0",
   "private": true,
   "workspaces": [
-    "packages/*",
-    "infra"
-  ]
+    "packages/setup/*",
+    "packages/plugins/*",
+    "packages/aws/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "fleet:config": "node packages/setup/fleet-config/dist/cli.js",
+    "fleet:connect": "node packages/tools/fleet-connect/dist/index.js",
+    "local:up": "scripts/local-fleet.sh up",
+    "local:down": "scripts/local-fleet.sh down",
+    "local:restart": "scripts/local-fleet.sh restart",
+    "local:status": "scripts/local-fleet.sh status",
+    "local:logs": "scripts/local-fleet.sh logs",
+    "local:clean": "scripts/local-fleet.sh clean"
+  },
+  "devDependencies": {
+    "fleet-connect": "file:packages/tools/fleet-connect"
+  }
 }

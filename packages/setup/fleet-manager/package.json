@@ -1,0 +1,27 @@
+{
+  "name": "@anycompany/fleet-manager",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "fleet-manager": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/cli.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-ecs": "^3.0.0",
+    "@aws-sdk/client-s3": "^3.0.0",
+    "@aws-sdk/client-secrets-manager": "^3.0.0",
+    "chokidar": "^3.5.3",
+    "commander": "^12.0.0",
+    "dockerode": "^4.0.0",
+    "yaml": "^2.3.4"
+  },
+  "devDependencies": {
+    "@types/dockerode": "^3.3.23",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}

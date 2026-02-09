@@ -1,0 +1,19 @@
+{
+  "default_server_config": {
+    "m.homeserver": {
+      "base_url": "http://localhost:6167",
+      "server_name": "anycompany.corp"
+    }
+  },
+  "disable_guests": true,
+  "disable_3pid_login": true,
+  "brand": "Open-Claw-Fleet-Command-Center",
+  "branding": {
+    "auth_header_logo_url": "/logo.png"
+  },
+  "integrations_ui_url": "",
+  "integrations_rest_url": "",
+  "integrations_widgets_urls": [],
+  "bug_report_endpoint_url": "",
+  "show_labs_settings": false
+}

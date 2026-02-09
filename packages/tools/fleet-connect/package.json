@@ -1,0 +1,22 @@
+{
+  "name": "fleet-connect",
+  "version": "1.0.0",
+  "description": "Connect to Open-Claw-Fleet services via SSM port forwarding",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "fleet-connect": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-ec2": "^3.0.0",
+    "@aws-sdk/client-ecs": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "id": "people",
+  "name": "People Directory",
+  "description": "Search company directory - find people by name, Matrix ID, department, team, or title.",
+  "configSchema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+  }
+}

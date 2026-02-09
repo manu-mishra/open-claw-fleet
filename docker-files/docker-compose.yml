@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  conduit:
+    image: matrixconduit/matrix-conduit:latest
+    ports:
+      - "6167:6167"
+    environment:
+      CONDUIT_CONFIG: /etc/conduit.toml
+    volumes:
+      - conduit_data:/var/lib/matrix-conduit
+      - ./conduit.toml:/etc/conduit.toml:ro
+    networks:
+      - agent_network
+
+  element:
+    image: vectorim/element-web
+    ports:
+      - "8080:80"
+    volumes:
+      - ./element-config.json:/app/config.json:ro
+    depends_on:
+      - conduit
+    networks:
+      - agent_network
+
+  agent-vp-eng:
+    build:
+      context: ../..
+      dockerfile: poc/matrix-agents/Dockerfile.agent
+    environment:
+      MATRIX_HOMESERVER: http://conduit:6167
+      AGENT_MATRIX_ID: "@braxton.roberts:anycompany.corp"
+      AGENT_PASSWORD: agent123
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN}
+    depends_on:
+      - conduit
+    networks:
+      - agent_network
+    volumes:
+      - agent_vp_data:/root/.openclaw
+      - ./templates/vp-engineering:/templates:ro
+
+  agent-director:
+    build:
+      context: ../..
+      dockerfile: poc/matrix-agents/Dockerfile.agent
+    environment:
+      MATRIX_HOMESERVER: http://conduit:6167
+      AGENT_MATRIX_ID: "@dylan.thomas:anycompany.corp"
+      AGENT_PASSWORD: agent123
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN}
+    depends_on:
+      - conduit
+    networks:
+      - agent_network
+    volumes:
+      - agent_director_data:/root/.openclaw
+      - ./templates/director-engineering:/templates:ro
+
+networks:
+  agent_network:
+    driver: bridge
+
+volumes:
+  conduit_data:
+  agent_vp_data:
+  agent_director_data:
