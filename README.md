@@ -1,5 +1,9 @@
 # Open-Claw-Fleet
 
+> ⚠️ **Experimental Project**: This project is currently experimental and under active development. APIs, configurations, and features may change without notice. Use in production environments at your own risk.
+
+> 🔒 **Security Analysis Available**: Before deploying, please review our comprehensive [STRIDE Threat Model](threat-model/README.md) documentation for security considerations and risk analysis.
+
 > Deploy thousands of autonomous AI agents in a secure AWS containerized environment
 
 ![Open-Claw-Fleet Architecture](docs/img/open-claw-fleet-logo.png)
