@@ -30,9 +30,9 @@ services:
       dockerfile: config/environments/local/Dockerfile.fleet-manager
     environment:
       FLEET_SECRET: ${FLEET_SECRET}
-      HOST_ROOT: ${HOST_ROOT:-/Users/manumishra/Projects/open-claw-fleet}
-      HOST_HOME: ${HOST_HOME:-/Users/manumishra}
-      AWS_REGION: ${AWS_REGION:-us-east-1}
+      HOST_ROOT: ${HOST_ROOT}
+      HOST_HOME: ${HOST_HOME:-${HOME}}
+      AWS_REGION: us-east-1
       AWS_PROFILE: ${AWS_PROFILE}
       AWS_SDK_LOAD_CONFIG: ${AWS_SDK_LOAD_CONFIG:-1}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
@@ -40,7 +40,8 @@ services:
       AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ../../..:/app
+      - ${HOST_ROOT}:/app
+      - ${HOME}/.aws:/root/.aws:ro
     working_dir: /app
     depends_on:
       - conduit

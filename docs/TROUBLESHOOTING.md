@@ -294,6 +294,49 @@ export FLEET_SECRET=test123
 docker compose up -d
 ```
 
+### 9. Docker Volume Mounts Not Working on macOS
+
+**Symptoms:**
+- Agent containers show: `ENOENT: no such file or directory, open '/workspace/AGENTS.md'`
+- Fleet-manager shows: `ENOENT: no such file or directory, open '/app/config/environments/local/workspaces/org.json'`
+- Files exist on host but appear empty in containers
+- `docker run --rm -v "$(pwd)/config:/mnt" alpine ls /mnt/environments/local/workspaces/` shows empty directory
+
+**Cause:** Docker Desktop volume mounting system can get into a bad state on macOS, where subdirectories of mounted paths appear empty even though the mount configuration is correct.
+
+**NOT caused by:**
+- File sharing permissions (gRPC FUSE settings)
+- Extended attributes (`com.apple.provenance`)
+- .dockerignore exclusions
+- Incorrect mount syntax
+
+**Solution:** Restart Docker Desktop
+```bash
+# Via CLI
+osascript -e 'quit app "Docker"' && sleep 3 && open -a Docker
+
+# Or via GUI
+# Click Docker icon in menu bar → Quit Docker Desktop → Reopen it
+```
+
+Wait 15-20 seconds for Docker to fully restart, then start your containers normally:
+```bash
+./scripts/local-fleet.sh up
+```
+
+**Verification:**
+```bash
+# Test if mounts work now
+docker run --rm -v "$(pwd)/config/environments/local/workspaces:/mnt" alpine ls -la /mnt/
+# Should show: Engineering/ and org.json
+```
+
+**If problem persists:**
+- Check Docker Desktop version (Settings → About)
+- Try updating/downgrading Docker Desktop
+- Check if the directory is on an external drive or network mount
+- Verify Time Machine or iCloud isn't interfering with the directory
+
 ---
 
 ## Debugging Workflow
