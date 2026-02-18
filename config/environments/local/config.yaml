@@ -3,8 +3,9 @@ ceo:
   matrixId: "@manu.mishra:anycompany.corp"
 defaults:
   model:
-    primary: amazon-bedrock/global.anthropic.claude-sonnet-4-5-20250929-v1:0
+    primary: amazon-bedrock/global.anthropic.claude-sonnet-4-6-20260217-v1:0
     fallbacks:
+      - amazon-bedrock/global.anthropic.claude-sonnet-4-5-20250929-v1:0
       - amazon-bedrock/global.anthropic.claude-opus-4-6-v1
   skills:
     - people
