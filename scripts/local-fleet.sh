@@ -38,6 +38,9 @@ ensure_builds() {
   if [ ! -f "$ROOT_DIR/packages/plugins/people/dist/index.js" ]; then
     missing=1
   fi
+  if [ ! -f "$ROOT_DIR/packages/plugins/command-center/dist/index.js" ]; then
+    missing=1
+  fi
 
   if [ "$missing" -eq 1 ]; then
     echo "Building workspace packages..."
@@ -56,6 +59,20 @@ compose() {
   (cd "$ENV_DIR" && docker compose "$@")
 }
 
+ensure_env() {
+  : "${FLEET_SECRET:=test123}"
+  export FLEET_SECRET
+  : "${HOST_ROOT:=$ROOT_DIR}"
+  export HOST_ROOT
+  : "${HOST_HOME:=$HOME}"
+  export HOST_HOME
+  : "${AWS_SDK_LOAD_CONFIG:=1}"
+  export AWS_SDK_LOAD_CONFIG
+  if [ -n "${AWS_PROFILE:-}" ]; then
+    export AWS_PROFILE
+  fi
+}
+
 remove_agents() {
   local agents
   agents=$(docker ps -a --format '{{.Names}}' | grep -E '^agent-' || true)
@@ -68,43 +85,24 @@ remove_agents() {
 cmd=${1:-}
 case "$cmd" in
   up)
-    : "${FLEET_SECRET:=test123}"
-    export FLEET_SECRET
-    : "${HOST_ROOT:=$ROOT_DIR}"
-    export HOST_ROOT
-    : "${HOST_HOME:=$HOME}"
-    export HOST_HOME
-    : "${AWS_SDK_LOAD_CONFIG:=1}"
-    export AWS_SDK_LOAD_CONFIG
-    if [ -n "${AWS_PROFILE:-}" ]; then
-      export AWS_PROFILE
-    fi
+    ensure_env
     ensure_builds
     build_agent_image
     compose up -d
     ;;
   down)
+    ensure_env
     remove_agents
     compose down
     ;;
   restart)
-    : "${FLEET_SECRET:=test123}"
-    export FLEET_SECRET
-    : "${HOST_ROOT:=$ROOT_DIR}"
-    export HOST_ROOT
-    : "${HOST_HOME:=$HOME}"
-    export HOST_HOME
-    : "${AWS_SDK_LOAD_CONFIG:=1}"
-    export AWS_SDK_LOAD_CONFIG
-    if [ -n "${AWS_PROFILE:-}" ]; then
-      export AWS_PROFILE
-    fi
+    ensure_env
     remove_agents
     compose down
     compose up -d
     ;;
   status)
-    docker ps --format 'table {{.Names}}\t{{.Status}}' | grep -E "agent-|fleet-manager|conduit|element" || true
+    docker ps --format 'table {{.Names}}\t{{.Status}}' | grep -E "agent-|fleet-manager|conduit|element|command-center" || true
     ;;
   logs)
     fm=$(docker ps --format '{{.Names}}' | grep -E 'fleet-manager' | head -n 1 || true)
@@ -115,6 +113,7 @@ case "$cmd" in
     docker logs -f "$fm"
     ;;
   clean)
+    ensure_env
     remove_agents
     compose down -v
     ;;

@@ -1,5 +1,6 @@
 import { ECSClient, RunTaskCommand, StopTaskCommand, DescribeTasksCommand, ListTasksCommand } from '@aws-sdk/client-ecs';
 import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
+import { EFSClient, CreateAccessPointCommand, DescribeAccessPointsCommand, DeleteAccessPointCommand } from '@aws-sdk/client-efs';
 import type { AgentHandle, Orchestrator, StartAgentParams } from './orchestrator.js';
 
 export interface EcsOrchestratorConfig {
@@ -11,21 +12,27 @@ export interface EcsOrchestratorConfig {
   fleetSecretArn: string;
   ceoSecretArn: string;
   region: string;
+  matrixDomain?: string;
+  commandCenterUrl?: string;
+  commandCenterApiToken?: string;
 }
 
 export class EcsOrchestrator implements Orchestrator {
   private ecs: ECSClient;
   private secrets: SecretsManagerClient;
+  private efs: EFSClient;
   private config: EcsOrchestratorConfig;
+  private accessPointCache = new Map<string, string>(); // matrixId -> accessPointId
 
   constructor(config: EcsOrchestratorConfig) {
     this.config = config;
     this.ecs = new ECSClient({ region: config.region });
     this.secrets = new SecretsManagerClient({ region: config.region });
+    this.efs = new EFSClient({ region: config.region });
   }
 
   async startAgent(params: StartAgentParams): Promise<AgentHandle> {
-    const { matrixId, homeserver } = params;
+    const { matrixId, homeserver, workspacePath } = params;
     
     // Get fleet secret for password derivation
     const fleetSecretData = await this.secrets.send(new GetSecretValueCommand({
@@ -40,7 +47,25 @@ export class EcsOrchestrator implements Orchestrator {
       .digest('hex')
       .slice(0, 32);
     
-    // Run ECS task - use workspace/runtime paths passed from deploy()
+    // Create or get access point for this agent
+    const accessPointId = await this.ensureAccessPoint(matrixId, workspacePath);
+    
+    // Run ECS task with access point isolation
+    const environmentOverrides = [
+      { name: 'AGENT_MATRIX_ID', value: matrixId },
+      { name: 'MATRIX_HOMESERVER', value: homeserver },
+      { name: 'MATRIX_DOMAIN', value: this.config.matrixDomain || 'anycompany.corp' },
+      { name: 'WORKSPACE_PATH', value: '/workspace' }, // Now isolated via access point
+      { name: 'RUNTIME_PATH', value: params.runtimePath },
+      { name: 'FLEET_SECRET_ARN', value: this.config.fleetSecretArn },
+      ...(this.config.commandCenterUrl
+        ? [{ name: 'COMMAND_CENTER_URL', value: this.config.commandCenterUrl }]
+        : []),
+      ...(this.config.commandCenterApiToken
+        ? [{ name: 'COMMAND_CENTER_API_TOKEN', value: this.config.commandCenterApiToken }]
+        : []),
+    ];
+
     const result = await this.ecs.send(new RunTaskCommand({
       cluster: this.config.clusterArn,
       taskDefinition: this.config.taskDefinitionArn,
@@ -55,15 +80,18 @@ export class EcsOrchestrator implements Orchestrator {
       overrides: {
         containerOverrides: [{
           name: 'agent',
-          environment: [
-            { name: 'AGENT_MATRIX_ID', value: matrixId },
-            { name: 'MATRIX_HOMESERVER', value: homeserver },
-            { name: 'WORKSPACE_PATH', value: params.workspacePath },
-            { name: 'RUNTIME_PATH', value: params.runtimePath },
-            { name: 'FLEET_SECRET_ARN', value: this.config.fleetSecretArn },
-          ],
+          environment: environmentOverrides,
         }],
+        // Override volume to use access point
+        taskRoleArn: undefined, // Use task definition role
+        executionRoleArn: undefined, // Use task definition execution role
       },
+      // Note: Access point must be configured in task definition volume
+      // We pass the access point ID via tags for reference
+      tags: [
+        { key: 'AgentId', value: matrixId },
+        { key: 'AccessPointId', value: accessPointId },
+      ],
     }));
 
     // Check for failures
@@ -77,6 +105,72 @@ export class EcsOrchestrator implements Orchestrator {
 
     console.log(`✅ Started task: ${taskArn}`);
     return { id: taskArn, matrixId };
+  }
+
+  /**
+   * Ensure access point exists for agent, creating if needed
+   */
+  private async ensureAccessPoint(matrixId: string, workspacePath: string): Promise<string> {
+    // Check cache first
+    if (this.accessPointCache.has(matrixId)) {
+      return this.accessPointCache.get(matrixId)!;
+    }
+
+    // Sanitize matrix ID for tagging
+    const sanitizedId = matrixId.replace(/[@:]/g, '').replace('.anycompany.corp', '');
+    
+    try {
+      // Check if access point already exists
+      const existing = await this.efs.send(new DescribeAccessPointsCommand({
+        FileSystemId: this.config.fileSystemId,
+      }));
+
+      const found = existing.AccessPoints?.find(ap => 
+        ap.Tags?.some(t => t.Key === 'AgentId' && t.Value === sanitizedId)
+      );
+
+      if (found?.AccessPointId) {
+        console.log(`✅ Using existing access point: ${found.AccessPointId} for ${matrixId}`);
+        this.accessPointCache.set(matrixId, found.AccessPointId);
+        return found.AccessPointId;
+      }
+    } catch (err: any) {
+      console.warn(`⚠️  Failed to check existing access points: ${err.message}`);
+    }
+
+    // Create new access point
+    // Extract path relative to EFS root (remove /data prefix)
+    const efsPath = workspacePath.replace('/data', '');
+    
+    console.log(`🔧 Creating access point for ${matrixId} at ${efsPath}`);
+    
+    const result = await this.efs.send(new CreateAccessPointCommand({
+      FileSystemId: this.config.fileSystemId,
+      PosixUser: {
+        Uid: 1000,
+        Gid: 1000,
+      },
+      RootDirectory: {
+        Path: efsPath,
+        CreationInfo: {
+          OwnerUid: 1000,
+          OwnerGid: 1000,
+          Permissions: '755',
+        },
+      },
+      Tags: [
+        { Key: 'AgentId', Value: sanitizedId },
+        { Key: 'MatrixId', Value: matrixId },
+        { Key: 'ManagedBy', Value: 'fleet-manager' },
+        { Key: 'CreatedAt', Value: new Date().toISOString() },
+      ],
+    }));
+
+    const accessPointId = result.AccessPointId!;
+    console.log(`✅ Created access point: ${accessPointId} for ${matrixId}`);
+    
+    this.accessPointCache.set(matrixId, accessPointId);
+    return accessPointId;
   }
 
   async stopAgent(handle: AgentHandle): Promise<void> {

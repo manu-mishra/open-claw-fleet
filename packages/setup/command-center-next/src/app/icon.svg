@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="openclaw" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0f7bc8" />
+      <stop offset="1" stop-color="#11a18f" />
+    </linearGradient>
+  </defs>
+
+  <rect width="64" height="64" rx="14" fill="#eaf4ff" />
+  <g fill="url(#openclaw)">
+    <path d="M13 27c0-5 4-9 9-9 1 0 2 0 3 1-2 2-3 4-3 7 0 5 4 9 9 9H18c-3 0-5-3-5-8z" />
+    <path d="M51 27c0-5-4-9-9-9-1 0-2 0-3 1 2 2 3 4 3 7 0 5-4 9-9 9h13c3 0 5-3 5-8z" />
+    <ellipse cx="32" cy="36" rx="16" ry="12" />
+    <circle cx="25" cy="23" r="3.4" />
+    <circle cx="39" cy="23" r="3.4" />
+    <circle cx="25" cy="23" r="1.2" fill="#eaf4ff" />
+    <circle cx="39" cy="23" r="1.2" fill="#eaf4ff" />
+    <rect x="21" y="47" width="4" height="7" rx="2" />
+    <rect x="29" y="48" width="4" height="6" rx="2" />
+    <rect x="37" y="47" width="4" height="7" rx="2" />
+  </g>
+</svg>

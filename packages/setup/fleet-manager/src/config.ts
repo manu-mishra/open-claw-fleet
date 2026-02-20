@@ -38,6 +38,10 @@ export interface FleetConfig {
     homeserver: string;
     domain: string;
   };
+  commandCenter?: {
+    publicUrl?: string;
+    taskAssignmentBotMatrixId?: string;
+  };
   departments: Record<string, DepartmentConfig>;
   agents?: Record<string, AgentOverride>;
 }

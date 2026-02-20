@@ -24,12 +24,42 @@ services:
     networks:
       - fleet
 
+  command-center:
+    build:
+      context: ../../..
+      dockerfile: docker-files/aws/Dockerfile.command-center
+    environment:
+      PORT: 8090
+      DATA_DIR: /data/command-center
+      WORKSPACES_ROOT: /data/workspaces
+      MATRIX_HOMESERVER: http://conduit:6167
+      MATRIX_DOMAIN: anycompany.corp
+      COMMAND_CENTER_PUBLIC_URL: ${COMMAND_CENTER_PUBLIC_URL:-http://localhost:8090}
+      COMMAND_CENTER_API_BASE_URL: http://127.0.0.1:8090
+      NEXT_PUBLIC_COMMAND_CENTER_API_BASE_URL: ${COMMAND_CENTER_PUBLIC_URL:-http://localhost:8090}
+      TASK_ASSIGNMENT_BOT_MATRIX_ID: ${TASK_ASSIGNMENT_BOT_MATRIX_ID:-@task.assignments:anycompany.corp}
+      ORG_FILE_PATH: /data/workspaces/org.json
+      ORG_DEPLOYED_FILE_PATH: /data/workspaces/deployed-org.json
+      COMMAND_CENTER_API_TOKEN: ${FLEET_SECRET}
+      MATRIX_PASSWORD_SEED: ${FLEET_SECRET}
+    ports:
+      - "8090:8090"
+    volumes:
+      - ${HOST_ROOT}/config/environments/local/workspaces:/data/workspaces:ro
+      - command_center_data:/data/command-center
+    depends_on:
+      - conduit
+    networks:
+      - fleet
+
   fleet-manager:
     build:
       context: ../../..
       dockerfile: config/environments/local/Dockerfile.fleet-manager
     environment:
       FLEET_SECRET: ${FLEET_SECRET}
+      COMMAND_CENTER_URL: http://command-center:8090
+      COMMAND_CENTER_API_TOKEN: ${FLEET_SECRET}
       HOST_ROOT: ${HOST_ROOT}
       HOST_HOME: ${HOST_HOME:-${HOME}}
       AWS_REGION: us-east-1
@@ -54,3 +84,4 @@ networks:
 
 volumes:
   conduit_data:
+  command_center_data:

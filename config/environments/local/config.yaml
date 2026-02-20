@@ -3,16 +3,20 @@ ceo:
   matrixId: "@manu.mishra:anycompany.corp"
 defaults:
   model:
-    primary: amazon-bedrock/global.anthropic.claude-sonnet-4-6-20260217-v1:0
+    primary: amazon-bedrock/global.anthropic.claude-sonnet-4-5-20250929-v1:0
     fallbacks:
-      - amazon-bedrock/global.anthropic.claude-sonnet-4-5-20250929-v1:0
       - amazon-bedrock/global.anthropic.claude-opus-4-6-v1
+      - amazon-bedrock/us.anthropic.claude-sonnet-4-20250514-v1:0
+      - amazon-bedrock/global.anthropic.claude-sonnet-4-20250514-v1:0
   skills:
     - people
   requireMention: true
 matrix:
   homeserver: http://conduit:6167
   domain: anycompany.corp
+commandCenter:
+  publicUrl: http://localhost:8090
+  taskAssignmentBotMatrixId: "@task.assignments:anycompany.corp"
 departments:
   Engineering:
     enabled: true

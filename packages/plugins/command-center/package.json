@@ -1,0 +1,22 @@
+{
+  "name": "@anycompany/command-center-plugin",
+  "version": "1.0.0",
+  "description": "OpenClaw plugin for Command Center task operations",
+  "main": "dist/index.js",
+  "openclaw": {
+    "id": "command-center",
+    "extensions": [
+      "./dist/index.js"
+    ]
+  },
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@sinclair/typebox": "^0.32.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}

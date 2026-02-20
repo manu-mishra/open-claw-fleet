@@ -11,6 +11,7 @@ import { ElementServiceConstruct } from '../constructs/element-service-construct
 import { AgentTaskConstruct } from '../constructs/agent-task-construct';
 import { FleetOrchestratorConstruct } from '../constructs/fleet-orchestrator-construct';
 import { FleetManagerServiceConstruct } from '../constructs/fleet-manager-service-construct';
+import { CommandCenterServiceConstruct } from '../constructs/command-center-service-construct';
 import { ClusterCleanup } from '../constructs/cluster-cleanup-construct';
 
 import { SecretsConstruct } from '../constructs/secrets-construct';
@@ -22,6 +23,7 @@ export interface EnvironmentStackProps extends cdk.StackProps {
   conduitRepoUri: string;
   elementRepoUri: string;
   fleetManagerRepoUri: string;
+  commandCenterRepoUri: string;
   fileSystemId: string;
   configBucketName?: string;
 }
@@ -73,6 +75,11 @@ export class EnvironmentStack extends cdk.Stack {
       description: 'Element web UI security group',
     });
 
+    const commandCenterSg = new ec2.SecurityGroup(this, 'CommandCenterSecurityGroup', {
+      vpc: network.vpc,
+      description: 'Command Center UI security group',
+    });
+
     // Allow bastion to access Element and Conduit
     elementSg.addIngressRule(
       bastion.instance.connections.securityGroups[0],
@@ -84,6 +91,18 @@ export class EnvironmentStack extends cdk.Stack {
       bastion.instance.connections.securityGroups[0],
       ec2.Port.tcp(6167),
       'Allow bastion to access Conduit'
+    );
+
+    commandCenterSg.addIngressRule(
+      bastion.instance.connections.securityGroups[0],
+      ec2.Port.tcp(8090),
+      'Allow bastion to access Command Center UI'
+    );
+
+    commandCenterSg.addIngressRule(
+      agentSg,
+      ec2.Port.tcp(8090),
+      'Allow agents to access Command Center API'
     );
 
     // Import EFS from shared stack (mount targets created here for this VPC)
@@ -108,7 +127,7 @@ export class EnvironmentStack extends cdk.Stack {
     }
 
     // Allow NFS from ECS tasks and bastion
-    for (const sg of [conduitSg, agentSg, fleetManagerSg, bastion.instance.connections.securityGroups[0]]) {
+    for (const sg of [conduitSg, agentSg, fleetManagerSg, commandCenterSg, bastion.instance.connections.securityGroups[0]]) {
       efsSecurityGroup.addIngressRule(sg, ec2.Port.tcp(2049), 'Allow NFS');
     }
 
@@ -129,6 +148,18 @@ export class EnvironmentStack extends cdk.Stack {
       conduitSecurityGroup: conduit.securityGroup,
       environment: props.environment,
       securityGroup: elementSg,
+    });
+
+    const commandCenter = new CommandCenterServiceConstruct(this, 'CommandCenter', {
+      cluster: cluster.cluster,
+      namespace: cluster.namespace,
+      vpc: network.vpc,
+      fileSystem: fileSystem,
+      repoUri: props.commandCenterRepoUri,
+      conduitSecurityGroup: conduit.securityGroup,
+      fleetSecretArn: secrets.fleetSecret.secretArn,
+      environment: props.environment,
+      securityGroup: commandCenterSg,
     });
 
     const agentTask = new AgentTaskConstruct(this, 'AgentTask', {
@@ -186,6 +217,10 @@ export class EnvironmentStack extends cdk.Stack {
 
     new cdk.CfnOutput(this, 'ClusterArn', {
       value: cluster.cluster.clusterArn,
+    });
+
+    new cdk.CfnOutput(this, 'CommandCenterServiceName', {
+      value: commandCenter.service.serviceName,
     });
 
     new cdk.CfnOutput(this, 'EfsFileSystemId', {

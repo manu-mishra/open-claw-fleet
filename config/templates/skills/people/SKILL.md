@@ -8,6 +8,12 @@ metadata: { "openclaw": { "emoji": "👥" } }
 
 Use the `people` tool to look up anyone in the company.
 
+## Source of Truth
+
+- Primary source is the Command Center People API (`/api/people/query` on command-center).
+- Do not infer org data from chat history.
+- Local `org.json` fallback is disabled by default and should only be enabled for emergency local debugging.
+
 ## Actions
 
 ### Search by name

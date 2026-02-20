@@ -1,4 +1,4 @@
-import { mkdir, writeFile, readFile, readdir } from 'fs/promises';
+import { mkdir, writeFile, readFile, readdir, rm } from 'fs/promises';
 import { join } from 'path';
 import { FleetConfig } from './config.js';
 import { Org, Person } from './org.js';
@@ -17,21 +17,31 @@ export async function generateWorkspaces(
   opts: GenerateOptions
 ): Promise<void> {
   const byMatrixId = new Map(org.people.map(p => [p.matrixId, p]));
+  const deployedIds = new Set(agents.map(a => a.matrixId));
+  if (config.ceo?.matrixId) deployedIds.add(config.ceo.matrixId);
+  const filteredOrg = buildFilteredOrg(org, deployedIds);
 
   // Write org.json
   if (!opts.dryRun) {
     await mkdir(opts.outputDir, { recursive: true });
     await writeFile(join(opts.outputDir, 'org.json'), JSON.stringify(org, null, 2));
+    await writeFile(join(opts.outputDir, 'deployed-org.json'), JSON.stringify(filteredOrg, null, 2));
   }
   console.log(`${opts.dryRun ? '[DRY RUN] ' : ''}Generated org.json (${org.people.length} people)`);
 
-  // Build set of deployed IDs including CEO
-  const deployedIds = new Set(agents.map(a => a.matrixId));
-  if (config.ceo?.matrixId) deployedIds.add(config.ceo.matrixId);
+  const expectedAgentDirs = new Set(
+    agents.map((agent) =>
+      join(opts.outputDir, agent.department, workspaceDirectoryName(agent.matrixId, config.matrix.domain))
+    )
+  );
+
+  if (!opts.dryRun) {
+    await pruneStaleAgentWorkspaces(opts.outputDir, expectedAgentDirs);
+  }
 
   for (const agent of agents) {
     // Use sanitized matrix ID as directory name (matches ECS orchestrator)
-    const agentDir = join(opts.outputDir, agent.department, agent.matrixId.replace(/[@:]/g, '').replace(config.matrix.domain, ''));
+    const agentDir = join(opts.outputDir, agent.department, workspaceDirectoryName(agent.matrixId, config.matrix.domain));
 
     if (!opts.dryRun) {
       await mkdir(agentDir, { recursive: true });
@@ -51,6 +61,9 @@ export async function generateWorkspaces(
       const agentsMd = await composeAgentsMd(agent, config, opts.templatesDir, context);
       await writeFile(join(agentDir, 'AGENTS.md'), agentsMd);
 
+      // Runtime system prompt composed from shared + role + department templates
+      const systemPrompt = await composeSystemPrompt(agent, opts.templatesDir, context);
+
       // HEARTBEAT.md from shared
       const heartbeatTpl = await loadTemplate(opts.templatesDir, 'shared/HEARTBEAT.md');
       await writeFile(join(agentDir, 'HEARTBEAT.md'), render(heartbeatTpl, context));
@@ -59,22 +72,81 @@ export async function generateWorkspaces(
       await copySkills(agent.resolvedSkills, opts.templatesDir, agentDir);
 
       // openclaw.json
-      await writeFile(join(agentDir, 'openclaw.json'), JSON.stringify(renderConfig(agent, config), null, 2));
+      await writeFile(join(agentDir, 'openclaw.json'), JSON.stringify(renderConfig(agent, config, systemPrompt), null, 2));
 
       // Filtered org.json - CEO + deployed agents only
-      const filteredPeople = org.people
-        .filter(p => deployedIds.has(p.matrixId))
-        .map(p => ({
-          ...p,
-          directReports: p.directReports.filter(id => deployedIds.has(id)),
-          reportsTo: p.reportsTo && deployedIds.has(p.reportsTo) ? p.reportsTo : null
-        }));
-      
-      const filteredOrg = { departments: org.departments, people: filteredPeople };
       await writeFile(join(agentDir, 'org.json'), JSON.stringify(filteredOrg, null, 2));
     }
 
     console.log(`${opts.dryRun ? '[DRY RUN] ' : ''}Generated ${agentDir}`);
+  }
+}
+
+function workspaceDirectoryName(matrixId: string, domain: string): string {
+  return matrixId.replace(/[@:]/g, '').replace(domain, '');
+}
+
+function buildFilteredOrg(org: Org, deployedIds: Set<string>): Org {
+  const filteredPeople = org.people
+    .filter((person) => deployedIds.has(person.matrixId))
+    .map((person) => ({
+      ...person,
+      directReports: person.directReports.filter((id) => deployedIds.has(id)),
+      reportsTo: person.reportsTo && deployedIds.has(person.reportsTo) ? person.reportsTo : null,
+    }));
+
+  const departments = org.departments
+    .map((department) => {
+      const deptPeople = filteredPeople.filter((person) => person.department === department.name);
+      const teams = Array.from(
+        new Set(deptPeople.map((person) => person.team).filter((team): team is string => Boolean(team)))
+      ).sort();
+      const vp = deptPeople.find((person) => person.level === 'VP')?.matrixId ?? '';
+      return {
+        name: department.name,
+        vp,
+        teams,
+        headcount: deptPeople.length,
+      };
+    })
+    .filter((department) => department.headcount > 0);
+
+  return { departments, people: filteredPeople };
+}
+
+async function pruneStaleAgentWorkspaces(outputDir: string, expectedAgentDirs: Set<string>): Promise<void> {
+  const removed: string[] = [];
+  const departmentEntries = await readdir(outputDir, { withFileTypes: true });
+
+  for (const department of departmentEntries) {
+    if (!department.isDirectory() || department.name.startsWith('.')) {
+      continue;
+    }
+
+    const departmentPath = join(outputDir, department.name);
+    const entries = await readdir(departmentPath, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isDirectory() || entry.name.startsWith('.')) {
+        continue;
+      }
+
+      const workspacePath = join(departmentPath, entry.name);
+      if (expectedAgentDirs.has(workspacePath)) {
+        continue;
+      }
+
+      await rm(workspacePath, { recursive: true, force: true });
+      removed.push(workspacePath);
+    }
+
+    const remaining = await readdir(departmentPath);
+    if (remaining.length === 0) {
+      await rm(departmentPath, { recursive: true, force: true });
+    }
+  }
+
+  if (removed.length > 0) {
+    console.log(`Pruned ${removed.length} stale workspace(s)`);
   }
 }
 
@@ -145,8 +217,31 @@ async function composeAgentsMd(
   return parts.join('\n\n---\n\n') || '# Agent\n\nNo templates configured.';
 }
 
+async function composeSystemPrompt(
+  agent: SelectedAgent,
+  templatesDir: string,
+  context: Record<string, any>
+): Promise<string> {
+  const parts: string[] = [];
+
+  const sharedTpl = await loadTemplate(templatesDir, 'prompts/shared/system.md');
+  if (sharedTpl) parts.push(render(sharedTpl, context));
+
+  let roleTpl = await loadTemplate(templatesDir, `prompts/roles/${agent.level}.md`);
+  if (!roleTpl) roleTpl = await loadTemplate(templatesDir, 'prompts/roles/_default.md');
+  if (roleTpl) parts.push(render(roleTpl, context));
+
+  let deptTpl = await loadTemplate(templatesDir, `prompts/departments/${agent.department}.md`);
+  if (!deptTpl) deptTpl = await loadTemplate(templatesDir, 'prompts/departments/_default.md');
+  if (deptTpl) parts.push(render(deptTpl, context));
+
+  return parts.join('\n\n').trim();
+}
+
 async function copySkills(skills: string[], templatesDir: string, agentDir: string): Promise<void> {
   const skillsDir = join(agentDir, 'skills');
+  // Reset skills directory on each generation to avoid stale/removed skills lingering.
+  await rm(skillsDir, { recursive: true, force: true });
   await mkdir(skillsDir, { recursive: true });
 
   for (const skill of skills) {
@@ -163,7 +258,11 @@ async function copySkills(skills: string[], templatesDir: string, agentDir: stri
   }
 }
 
-function renderConfig(agent: SelectedAgent, config: FleetConfig): object {
+function defaultSystemPrompt(agent: SelectedAgent): string {
+  return `You are ${agent.name}, ${agent.title} at AnyCompany Corp. Stay in character. Use the "people" tool for org lookups and the "tasks" tool for Command Center tasks. If you cannot proceed, set the task to blocked with blockedReason and nextAction.`;
+}
+
+function renderConfig(agent: SelectedAgent, config: FleetConfig, systemPrompt: string): object {
   const heartbeatMinutes = config.defaults.heartbeatMinutes ?? 5;
   return {
     models: {
@@ -193,12 +292,14 @@ function renderConfig(agent: SelectedAgent, config: FleetConfig): object {
       }
     },
     plugins: {
+      allow: ["matrix", "people", "command-center"],
       load: {
-        paths: ["/opt/plugins/people/people.js"]
+        paths: ["/opt/plugins/people/people.js", "/opt/plugins/command-center/command-center.js"]
       },
       entries: {
         matrix: { enabled: true },
-        people: { enabled: true }
+        people: { enabled: true },
+        "command-center": { enabled: true }
       }
     },
     channels: {
@@ -215,24 +316,7 @@ function renderConfig(agent: SelectedAgent, config: FleetConfig): object {
         groups: { 
           "*": { 
             requireMention: config.defaults.requireMention ?? true,
-            systemPrompt: `You are ${agent.name}, ${agent.title} at AnyCompany Corp. Stay in character. ALWAYS use the "people" tool for org lookups (names, managers, reports, headcount). If the tool is unavailable or returns no results, say so clearly and do not guess. For direct messages, use "message" with channel=matrix and target "@first.last:anycompany.corp". Use #all-employees:anycompany.corp only for broadcast updates. In group rooms, reply in threads (use reply metadata or threadId when sending via tool).
-
-Respond/ignore rules:
-- Respond when a message directly requests your input, assigns you work, or mentions you by name/role.
-- Respond to CEO and manager directives promptly, even in group rooms.
-- If a message is FYI/status with no action for you, do not reply; react with a simple acknowledgement (e.g. ✅) instead.
-- If a message is between others and does not need you, do not respond.
-- If unclear whether action is needed, ask one concise clarification question in the same room.
-- Never include reasoning, analysis, or tool traces in any reply. Output only the final answer.
-- Never delegate or call sessions_spawn unless explicitly instructed by the CEO.
-- Never output tags like <analysis>, <reasoning>, or role tokens.
-
-Agent communication protocol (agent-to-agent messages):
-- Prefix every outgoing agent-to-agent message with one of: [REQUEST], [INFORM], [COMPLETE], [ACK].
-- Always respond to [REQUEST]. Do not respond to [INFORM], [COMPLETE], or [ACK] unless clarification is required.
-- End task updates with [COMPLETE] when your work is done.
-- When responding to an agent-to-agent request, return only the final answer (no reasoning, no preamble).
-- When responding to an agent-to-agent request, return only the final answer (no reasoning, no preamble).`
+            systemPrompt: systemPrompt || defaultSystemPrompt(agent)
           } 
         },
         autoJoin: "always"

@@ -84,6 +84,18 @@ export class FleetManagerServiceConstruct extends Construct {
     // S3 read for config
     props.configBucket.grantRead(taskRole);
 
+    // Grant EFS access point management permissions
+    taskRole.addToPolicy(new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        'elasticfilesystem:CreateAccessPoint',
+        'elasticfilesystem:DescribeAccessPoints',
+        'elasticfilesystem:DeleteAccessPoint',
+        'elasticfilesystem:TagResource',
+      ],
+      resources: [props.fileSystem.fileSystemArn],
+    }));
+
     const executionRole = new iam.Role(this, 'ExecutionRole', {
       assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
       managedPolicies: [
@@ -148,6 +160,8 @@ export class FleetManagerServiceConstruct extends Construct {
         ECS_SECURITY_GROUPS: props.agentSecurityGroupId,
         EFS_FILE_SYSTEM_ID: props.fileSystem.fileSystemId,
         AWS_REGION: cdk.Stack.of(this).region,
+        MATRIX_DOMAIN: 'anycompany.corp',
+        COMMAND_CENTER_URL: 'http://command-center.anycompany.corp:8090',
         FLEET_SECRET_ARN: props.fleetSecretArn,
         CEO_SECRET_ARN: props.ceoSecretArn,
         CONFIG_BUCKET: props.configBucket.bucketName,
@@ -156,6 +170,7 @@ export class FleetManagerServiceConstruct extends Construct {
       },
       secrets: {
         FLEET_SECRET: ecs.Secret.fromSecretsManager(fleetSecret, 'secret'),
+        COMMAND_CENTER_API_TOKEN: ecs.Secret.fromSecretsManager(fleetSecret, 'secret'),
       },
     }).addMountPoints({
       sourceVolume: volumeName,

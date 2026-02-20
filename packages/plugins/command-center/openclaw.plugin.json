@@ -1,0 +1,10 @@
+{
+  "id": "command-center",
+  "name": "Command Center Tasks",
+  "description": "Manage Command Center work items from agents (list, create, update, comment, escalate).",
+  "configSchema": {
+    "type": "object",
+    "properties": {},
+    "additionalProperties": false
+  }
+}

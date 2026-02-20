@@ -22,6 +22,7 @@ for (const environment of Config.environments) {
     conduitRepoUri: sharedStack.conduitRepoUri,
     elementRepoUri: sharedStack.elementRepoUri,
     fleetManagerRepoUri: sharedStack.fleetManagerRepoUri,
+    commandCenterRepoUri: sharedStack.commandCenterRepoUri,
     fileSystemId: sharedStack.fileSystemId,
     env: {
       account: process.env.CDK_DEFAULT_ACCOUNT,

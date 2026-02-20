@@ -12,6 +12,7 @@ export class SharedStack extends cdk.Stack {
   public readonly conduitRepoUri: string;
   public readonly elementRepoUri: string;
   public readonly fleetManagerRepoUri: string;
+  public readonly commandCenterRepoUri: string;
   public readonly fileSystemId: string;
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -37,10 +38,16 @@ export class SharedStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
+    const commandCenterRepo = new ecr.Repository(this, 'CommandCenterRepo', {
+      repositoryName: `${Config.projectPrefix}/command-center`,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
     this.agentRepoUri = agentRepo.repositoryUri;
     this.conduitRepoUri = conduitRepo.repositoryUri;
     this.elementRepoUri = elementRepo.repositoryUri;
     this.fleetManagerRepoUri = fleetManagerRepo.repositoryUri;
+    this.commandCenterRepoUri = commandCenterRepo.repositoryUri;
 
     // EFS filesystem only (no VPC/mount targets - those go in environment stack)
     // RETAIN so data survives environment stack destroys
@@ -67,6 +74,7 @@ export class SharedStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'ConduitRepoUri', { value: this.conduitRepoUri });
     new cdk.CfnOutput(this, 'ElementRepoUri', { value: this.elementRepoUri });
     new cdk.CfnOutput(this, 'FleetManagerRepoUri', { value: this.fleetManagerRepoUri });
+    new cdk.CfnOutput(this, 'CommandCenterRepoUri', { value: this.commandCenterRepoUri });
     new cdk.CfnOutput(this, 'EfsFileSystemId', { value: this.fileSystemId });
   }
 }

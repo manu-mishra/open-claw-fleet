@@ -74,19 +74,33 @@ async function main() {
     const bastionId = await getBastionId();
     const conduitIp = await getTaskIp('Conduit');
     const elementIp = await getTaskIp('Element');
+    let commandCenterIp: string | null = null;
+    try {
+      commandCenterIp = await getTaskIp('CommandCenter');
+    } catch {
+      commandCenterIp = null;
+    }
 
     console.log(`\n✅ Found services:`);
     console.log(`   Bastion: ${bastionId}`);
     console.log(`   Conduit: ${conduitIp}`);
-    console.log(`   Element: ${elementIp}\n`);
+    console.log(`   Element: ${elementIp}`);
+    console.log(`   Command Center: ${commandCenterIp ?? 'not found'}\n`);
 
     console.log('🚀 Starting port forwards...\n');
 
-    // Start both port forwards
+    // Start all port forwards
     const conduitProc = await startPortForward(bastionId, conduitIp, 6167, 'Conduit');
     const elementProc = await startPortForward(bastionId, elementIp, 8080, 'Element');
+    const commandCenterProc = commandCenterIp
+      ? await startPortForward(bastionId, commandCenterIp, 8090, 'Command Center')
+      : null;
 
-    console.log('\n✅ Connected! Open http://localhost:8080 in your browser');
+    console.log('\n✅ Connected! Open:');
+    console.log('   Element: http://localhost:8080');
+    if (commandCenterProc) {
+      console.log('   Command Center: http://localhost:8090');
+    }
     console.log('   Press Ctrl+C to disconnect\n');
 
     // Handle cleanup
@@ -94,6 +108,7 @@ async function main() {
       console.log('\n\n🛑 Disconnecting...');
       conduitProc.kill();
       elementProc.kill();
+      commandCenterProc?.kill();
       process.exit(0);
     };
 
@@ -101,10 +116,15 @@ async function main() {
     process.on('SIGTERM', cleanup);
 
     // Wait for processes
-    await Promise.race([
+    const listeners: Array<Promise<unknown>> = [
       new Promise(resolve => conduitProc.on('exit', resolve)),
-      new Promise(resolve => elementProc.on('exit', resolve))
-    ]);
+      new Promise(resolve => elementProc.on('exit', resolve)),
+    ];
+    if (commandCenterProc) {
+      listeners.push(new Promise(resolve => commandCenterProc.on('exit', resolve)));
+    }
+
+    await Promise.race(listeners);
 
     cleanup();
   } catch (error) {

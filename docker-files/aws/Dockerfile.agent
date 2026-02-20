@@ -22,6 +22,10 @@ RUN patch -p1 -d /usr/local/lib/node_modules/openclaw < /opt/patches/openclaw-ma
 COPY packages/plugins/people /opt/plugins/people
 RUN cd /opt/plugins/people && npm install --production
 
+# Install command-center plugin
+COPY packages/plugins/command-center /opt/plugins/command-center
+RUN cd /opt/plugins/command-center && npm install --production
+
 WORKDIR /app
 COPY --from=builder /app/node_modules ./node_modules
 COPY packages/setup/agent-runtime ./

@@ -1,0 +1,225 @@
+{
+  "tasks": [
+    {
+      "id": "task_1771571044786_f668c135",
+      "title": "Smoke Test Blocked Flow",
+      "description": "Validate blocked metadata flow",
+      "workItemType": "task",
+      "parentTaskId": null,
+      "status": "inbox",
+      "priority": "high",
+      "creatorMatrixId": "@manu.mishra:anycompany.corp",
+      "assigneeMatrixId": "@aaron.phillips:anycompany.corp",
+      "tags": [],
+      "deliverable": "Validated API contract",
+      "blockedReason": null,
+      "blockerOwnerMatrixId": null,
+      "escalateToMatrixId": null,
+      "nextAction": null,
+      "ownerMatrixId": "@aaron.phillips:anycompany.corp",
+      "ownerName": "Unknown",
+      "department": "Unknown",
+      "departments": [],
+      "team": "Unknown",
+      "vp": "Unknown",
+      "director": "Unknown",
+      "manager": "Unknown",
+      "matrixRoomId": null,
+      "matrixThreadRootEventId": null,
+      "createdAt": "2026-02-20T07:04:04.786Z",
+      "updatedAt": "2026-02-20T07:04:04.790Z",
+      "comments": []
+    },
+    {
+      "id": "task_1771571060255_716a877a",
+      "title": "Smoke Test Blocked Flow 2",
+      "description": "Validate blocked metadata flow",
+      "workItemType": "task",
+      "parentTaskId": null,
+      "status": "blocked",
+      "priority": "high",
+      "creatorMatrixId": "@manu.mishra:anycompany.corp",
+      "assigneeMatrixId": null,
+      "tags": [],
+      "deliverable": "Validated API contract",
+      "blockedReason": "Waiting on production credentials",
+      "blockerOwnerMatrixId": "@aaron.phillips:anycompany.corp",
+      "escalateToMatrixId": "@manu.mishra:anycompany.corp",
+      "nextAction": "Platform owner grants scoped token",
+      "ownerMatrixId": "@manu.mishra:anycompany.corp",
+      "ownerName": "Unknown",
+      "department": "Unknown",
+      "departments": [],
+      "team": "Unknown",
+      "vp": "Unknown",
+      "director": "Unknown",
+      "manager": "Unknown",
+      "matrixRoomId": null,
+      "matrixThreadRootEventId": null,
+      "createdAt": "2026-02-20T07:04:20.255Z",
+      "updatedAt": "2026-02-20T07:04:20.389Z",
+      "comments": [
+        {
+          "id": "comment_1771571060389_19262170",
+          "authorMatrixId": "@manu.mishra:anycompany.corp",
+          "message": "[ESCALATION] Waiting on owner confirmation.",
+          "createdAt": "2026-02-20T07:04:20.389Z"
+        }
+      ]
+    },
+    {
+      "id": "task_1771571108533_10c78b31",
+      "title": "Smoke Test Init Fix",
+      "description": "",
+      "workItemType": "task",
+      "parentTaskId": null,
+      "status": "blocked",
+      "priority": "medium",
+      "creatorMatrixId": "@manu.mishra:anycompany.corp",
+      "assigneeMatrixId": null,
+      "tags": [],
+      "deliverable": "Validate init",
+      "blockedReason": "x",
+      "blockerOwnerMatrixId": null,
+      "escalateToMatrixId": null,
+      "nextAction": "y",
+      "ownerMatrixId": "@manu.mishra:anycompany.corp",
+      "ownerName": "Unknown",
+      "department": "Unknown",
+      "departments": [],
+      "team": "Unknown",
+      "vp": "Unknown",
+      "director": "Unknown",
+      "manager": "Unknown",
+      "matrixRoomId": null,
+      "matrixThreadRootEventId": null,
+      "createdAt": "2026-02-20T07:05:08.532Z",
+      "updatedAt": "2026-02-20T07:05:09.094Z",
+      "comments": [
+        {
+          "id": "comment_1771571109093_92cb4a44",
+          "authorMatrixId": "@manu.mishra:anycompany.corp",
+          "message": "[UPDATE] Status changed: inbox -> blocked",
+          "createdAt": "2026-02-20T07:05:09.093Z"
+        }
+      ]
+    },
+    {
+      "id": "task_1771571208916_c1d06299",
+      "title": "Plugin smoke task",
+      "description": "",
+      "workItemType": "task",
+      "parentTaskId": null,
+      "status": "blocked",
+      "priority": "medium",
+      "creatorMatrixId": "@manu.mishra:anycompany.corp",
+      "assigneeMatrixId": null,
+      "tags": [],
+      "deliverable": "Plugin integration verified",
+      "blockedReason": "Waiting on credentials",
+      "blockerOwnerMatrixId": null,
+      "escalateToMatrixId": null,
+      "nextAction": "Platform owner grants token",
+      "ownerMatrixId": "@manu.mishra:anycompany.corp",
+      "ownerName": "Unknown",
+      "department": "Unknown",
+      "departments": [],
+      "team": "Unknown",
+      "vp": "Unknown",
+      "director": "Unknown",
+      "manager": "Unknown",
+      "matrixRoomId": null,
+      "matrixThreadRootEventId": null,
+      "createdAt": "2026-02-20T07:06:48.916Z",
+      "updatedAt": "2026-02-20T07:06:49.850Z",
+      "comments": [
+        {
+          "id": "comment_1771571209376_6584c4fe",
+          "authorMatrixId": "@manu.mishra:anycompany.corp",
+          "message": "[UPDATE] Status changed: inbox -> blocked",
+          "createdAt": "2026-02-20T07:06:49.375Z"
+        },
+        {
+          "id": "comment_1771571209850_93790933",
+          "authorMatrixId": "@manu.mishra:anycompany.corp",
+          "message": "Smoke comment from plugin test",
+          "createdAt": "2026-02-20T07:06:49.850Z"
+        }
+      ]
+    }
+  ],
+  "activity": [
+    {
+      "id": "event_1771571044788_4d7d2a13",
+      "createdAt": "2026-02-20T07:04:04.789Z",
+      "type": "task_created",
+      "actorMatrixId": "@manu.mishra:anycompany.corp",
+      "taskId": "task_1771571044786_f668c135",
+      "message": "@manu.mishra:anycompany.corp created task_1771571044786_f668c135"
+    },
+    {
+      "id": "event_1771571060255_7b092d30",
+      "createdAt": "2026-02-20T07:04:20.255Z",
+      "type": "task_created",
+      "actorMatrixId": "@manu.mishra:anycompany.corp",
+      "taskId": "task_1771571060255_716a877a",
+      "message": "@manu.mishra:anycompany.corp created task_1771571060255_716a877a"
+    },
+    {
+      "id": "event_1771571060331_cf9f33ef",
+      "createdAt": "2026-02-20T07:04:20.331Z",
+      "type": "task_updated",
+      "actorMatrixId": "@manu.mishra:anycompany.corp",
+      "taskId": "task_1771571060255_716a877a",
+      "message": "blocked reason updated, next action updated, blocker owner updated, escalation target updated"
+    },
+    {
+      "id": "event_1771571060389_fa90a799",
+      "createdAt": "2026-02-20T07:04:20.389Z",
+      "type": "comment_added",
+      "actorMatrixId": "@manu.mishra:anycompany.corp",
+      "taskId": "task_1771571060255_716a877a",
+      "message": "@manu.mishra:anycompany.corp commented on task_1771571060255_716a877a"
+    },
+    {
+      "id": "event_1771571108533_bb817832",
+      "createdAt": "2026-02-20T07:05:08.533Z",
+      "type": "task_created",
+      "actorMatrixId": "@manu.mishra:anycompany.corp",
+      "taskId": "task_1771571108533_10c78b31",
+      "message": "@manu.mishra:anycompany.corp created task_1771571108533_10c78b31"
+    },
+    {
+      "id": "event_1771571109093_b5719a4c",
+      "createdAt": "2026-02-20T07:05:09.093Z",
+      "type": "task_updated",
+      "actorMatrixId": "@manu.mishra:anycompany.corp",
+      "taskId": "task_1771571108533_10c78b31",
+      "message": "status inbox -> blocked, blocked reason updated, next action updated"
+    },
+    {
+      "id": "event_1771571208916_23b3dc91",
+      "createdAt": "2026-02-20T07:06:48.916Z",
+      "type": "task_created",
+      "actorMatrixId": "@manu.mishra:anycompany.corp",
+      "taskId": "task_1771571208916_c1d06299",
+      "message": "@manu.mishra:anycompany.corp created task_1771571208916_c1d06299"
+    },
+    {
+      "id": "event_1771571209376_44ba4e1a",
+      "createdAt": "2026-02-20T07:06:49.376Z",
+      "type": "task_updated",
+      "actorMatrixId": "@manu.mishra:anycompany.corp",
+      "taskId": "task_1771571208916_c1d06299",
+      "message": "status inbox -> blocked, blocked reason updated, next action updated"
+    },
+    {
+      "id": "event_1771571209850_8a49f2b6",
+      "createdAt": "2026-02-20T07:06:49.850Z",
+      "type": "comment_added",
+      "actorMatrixId": "@manu.mishra:anycompany.corp",
+      "taskId": "task_1771571208916_c1d06299",
+      "message": "@manu.mishra:anycompany.corp commented on task_1771571208916_c1d06299"
+    }
+  ]
+}

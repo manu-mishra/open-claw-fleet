@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Open Claw Command Center</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div id="loginModal" class="modal visible" role="dialog" aria-modal="true">
+      <form id="loginForm" class="login-panel">
+        <h1>Mission Control Login</h1>
+        <p>Use your Matrix account. No separate command-center users are created.</p>
+        <label>
+          Matrix ID
+          <input id="matrixId" name="matrixId" type="text" placeholder="@first.last:anycompany.corp" required />
+        </label>
+        <label>
+          Password
+          <input id="matrixPassword" name="password" type="password" required />
+        </label>
+        <button type="submit">Sign In</button>
+        <p id="loginError" class="error" aria-live="polite"></p>
+      </form>
+    </div>
+
+    <div id="createTaskModal" class="modal" role="dialog" aria-modal="true" aria-hidden="true">
+      <form id="createTaskForm" class="task-modal-panel">
+        <h2>Create Task</h2>
+        <p>Define owner, deliverable, and priority before dispatch.</p>
+
+        <label>
+          Title
+          <input id="taskTitle" type="text" placeholder="Create a mission task" required />
+        </label>
+
+        <label>
+          Assignee
+          <div class="assignee-field">
+            <input
+              id="taskAssignee"
+              type="text"
+              placeholder="Search by name, title, or Matrix ID"
+              list="agentSuggestions"
+              autocomplete="off"
+            />
+            <div id="createTaskAssigneeResults" class="assignee-results hidden"></div>
+          </div>
+        </label>
+
+        <label>
+          Deliverable
+          <input id="taskDeliverable" type="text" placeholder="Deliverable definition (required)" required />
+        </label>
+
+        <label>
+          Priority
+          <select id="taskPriority">
+            <option value="low">Low</option>
+            <option value="medium" selected>Medium</option>
+            <option value="high">High</option>
+            <option value="urgent">Urgent</option>
+          </select>
+        </label>
+
+        <div class="task-modal-actions">
+          <button id="cancelCreateTaskButton" type="button" class="ghost">Cancel</button>
+          <button id="submitCreateTaskButton" type="submit">Create Task</button>
+        </div>
+        <p id="createTaskStatus" class="status-text" aria-live="polite"></p>
+      </form>
+    </div>
+
+    <main id="app" class="app hidden">
+      <header class="topbar">
+        <div class="brand">
+          <span class="dot"></span>
+          <div>
+            <h1>Open Claw Command Center</h1>
+            <p id="currentUser">Signed in as ...</p>
+          </div>
+        </div>
+        <nav id="primaryTabs" class="tabs topbar-nav" aria-label="Primary sections">
+          <a class="tab-button is-active" data-tab="tasks" data-tab-link href="/tasks" aria-current="page">Dashboard</a>
+          <a class="tab-button" data-tab="agents" data-tab-link href="/agents">Agents</a>
+          <a class="tab-button" data-tab="activities" data-tab-link href="/activities">Activities</a>
+        </nav>
+        <div class="top-actions">
+          <span id="realtimeStatus" class="status-pill">Realtime: --</span>
+          <button id="refreshButton" class="ghost">Refresh</button>
+          <button id="logoutButton" class="danger">Logout</button>
+        </div>
+      </header>
+
+      <section class="metrics" id="metrics"></section>
+
+      <datalist id="agentSuggestions"></datalist>
+
+      <section class="workspace workspace-tasks tab-panel is-active" data-tab-panel="tasks">
+        <section class="panel board-panel">
+          <div class="panel-header">
+            <h2>Mission Queue</h2>
+            <button id="openCreateTaskModalButton" type="button">New Task</button>
+          </div>
+          <div id="board" class="board"></div>
+        </section>
+
+        <aside class="panel details-panel">
+          <div class="panel-header">
+            <h2>Task Detail</h2>
+          </div>
+          <div id="selectedTask" class="selected-task empty">Select a task card to inspect comments and update details.</div>
+
+          <form id="commentForm" class="comment-form hidden">
+            <textarea id="commentMessage" rows="3" placeholder="Add comment"></textarea>
+            <button type="submit">Add Comment</button>
+          </form>
+        </aside>
+      </section>
+
+      <section class="workspace workspace-agents tab-panel" data-tab-panel="agents" hidden>
+        <aside class="panel agents-panel">
+          <div class="panel-header">
+            <h2>Agents</h2>
+            <span id="agentCount">0</span>
+          </div>
+          <div id="agentsList" class="agents-list"></div>
+
+          <form id="broadcastForm" class="broadcast-form">
+            <h3>Broadcast</h3>
+            <label>
+              Room Alias
+              <input id="broadcastRoom" type="text" value="#all-employees" />
+            </label>
+            <label>
+              Message
+              <textarea id="broadcastMessage" rows="3" placeholder="Share mission updates or clarifications"></textarea>
+            </label>
+            <button type="submit">Send</button>
+            <p id="broadcastStatus" class="status-text" aria-live="polite"></p>
+          </form>
+        </aside>
+
+        <section class="panel agent-notes-panel">
+          <div class="panel-header">
+            <h2>Operator Notes</h2>
+          </div>
+          <p class="task-desc">Use this tab to review agents, check status, and send broad directives.</p>
+          <p class="task-desc">Use the Dashboard tab for assignment, delegation, and deliverable tracking.</p>
+          <p class="task-desc">Use the Activities tab for real-time org updates and status changes.</p>
+        </section>
+      </section>
+
+      <section class="workspace workspace-activities tab-panel" data-tab-panel="activities" hidden>
+        <section class="panel activity-panel full-height">
+          <div class="panel-header">
+            <h2>Live Activity Feed</h2>
+          </div>
+          <div id="activityFeed" class="activity-feed"></div>
+        </section>
+      </section>
+    </main>
+
+    <template id="taskCardTemplate">
+      <article class="task-card">
+        <header>
+          <h4></h4>
+          <span class="priority"></span>
+        </header>
+        <p class="task-desc"></p>
+        <p class="task-deliverable"></p>
+        <div class="task-meta"></div>
+      </article>
+    </template>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

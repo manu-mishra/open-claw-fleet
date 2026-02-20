@@ -1,0 +1,28 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy package manifests first for dependency install layer cache
+COPY package*.json ./
+COPY packages/setup/command-center-next/package*.json ./packages/setup/command-center-next/
+
+# Install workspace dependencies
+RUN npm install --workspace=@anycompany/command-center-next
+
+# Copy source and build
+COPY packages/setup/command-center-next ./packages/setup/command-center-next
+RUN npm run build --workspace=@anycompany/command-center-next
+
+# Runtime defaults
+ENV PORT=8090
+ENV DATA_DIR=/data/command-center
+ENV COMMAND_CENTER_API_BASE_URL=http://127.0.0.1:8090
+ENV NEXT_PUBLIC_COMMAND_CENTER_API_BASE_URL=http://localhost:8090
+ENV MATRIX_HOMESERVER=http://conduit:6167
+ENV MATRIX_DOMAIN=anycompany.corp
+
+RUN mkdir -p /data/command-center
+
+EXPOSE 8090
+
+CMD ["npm", "run", "start", "--workspace=@anycompany/command-center-next"]

@@ -16,6 +16,7 @@ docker build --platform linux/arm64 -t openclaw-agent:latest -f docker-files/aws
 docker build --platform linux/arm64 -t conduit-matrix:latest -f docker-files/aws/Dockerfile.conduit . || exit 1
 docker build --platform linux/arm64 -t element-web:latest -f docker-files/aws/Dockerfile.element . || exit 1
 docker build --platform linux/arm64 -t fleet-manager:latest -f docker-files/aws/Dockerfile.fleet-manager . || exit 1
+docker build --platform linux/arm64 -t command-center:latest -f docker-files/aws/Dockerfile.command-center . || exit 1
 echo "✅ Images built"
 echo ""
 
@@ -33,6 +34,7 @@ AGENT_REPO=$(aws cloudformation describe-stacks --stack-name open-claw-fleet-sha
 CONDUIT_REPO=$(aws cloudformation describe-stacks --stack-name open-claw-fleet-shared --query 'Stacks[0].Outputs[?OutputKey==`ConduitRepoUri`].OutputValue' --output text)
 ELEMENT_REPO=$(aws cloudformation describe-stacks --stack-name open-claw-fleet-shared --query 'Stacks[0].Outputs[?OutputKey==`ElementRepoUri`].OutputValue' --output text)
 FLEET_MANAGER_REPO=$(aws cloudformation describe-stacks --stack-name open-claw-fleet-shared --query 'Stacks[0].Outputs[?OutputKey==`FleetManagerRepoUri`].OutputValue' --output text)
+COMMAND_CENTER_REPO=$(aws cloudformation describe-stacks --stack-name open-claw-fleet-shared --query 'Stacks[0].Outputs[?OutputKey==`CommandCenterRepoUri`].OutputValue' --output text)
 echo "✅ Got URIs"
 echo ""
 
@@ -55,6 +57,9 @@ docker push $ELEMENT_REPO:latest
 
 docker tag fleet-manager:latest $FLEET_MANAGER_REPO:latest
 docker push $FLEET_MANAGER_REPO:latest
+
+docker tag command-center:latest $COMMAND_CENTER_REPO:latest
+docker push $COMMAND_CENTER_REPO:latest
 echo "✅ Images pushed"
 echo ""
 
@@ -76,6 +81,7 @@ echo "✅ Deployment complete!"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "🌐 Element Web UI:  $ELEMENT_URL"
+echo "🧭 Command Center:  use 'npm run fleet:connect' then open http://localhost:8090"
 echo "🎯 ECS Cluster:     $CLUSTER_ARN"
 echo "📄 Full outputs:    outputs.json"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

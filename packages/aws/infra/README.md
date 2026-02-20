@@ -18,6 +18,7 @@ See [AWS Architecture Documentation](../../../docs/aws-architecture.md) for deta
 - `ClusterStack` - ECS cluster with Fargate capacity
 - `ConduitStack` - Matrix homeserver service
 - `ElementStack` - Web UI with internal ALB
+- `CommandCenterStack` - Multi-user mission control dashboard
 
 ## Quick Start
 

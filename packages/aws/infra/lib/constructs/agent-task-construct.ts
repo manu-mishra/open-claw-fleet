@@ -64,15 +64,19 @@ export class AgentTaskConstruct extends Construct {
       ],
     }));
 
-    // Grant EFS mount permissions
+    // Grant EFS mount permissions with access point support
     executionRole.addToPolicy(new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
       actions: [
         'elasticfilesystem:ClientMount',
         'elasticfilesystem:ClientWrite',
-        'elasticfilesystem:ClientRootAccess',
       ],
       resources: [props.fileSystem.fileSystemArn],
+      conditions: {
+        StringEquals: {
+          'elasticfilesystem:AccessPointArn': `${props.fileSystem.fileSystemArn}/access-point/*`,
+        },
+      },
     }));
 
     this.taskDefinition = new ecs.FargateTaskDefinition(this, 'TaskDef', {
@@ -86,14 +90,18 @@ export class AgentTaskConstruct extends Construct {
       },
     });
 
-    // Add EFS volume for agent persistence
+    // Add EFS volume for agent persistence (access point will be specified at runtime)
     const volumeName = 'agent-data';
     this.taskDefinition.addVolume({
       name: volumeName,
       efsVolumeConfiguration: {
         fileSystemId: props.fileSystem.fileSystemId,
         transitEncryption: 'ENABLED',
-        rootDirectory: '/',
+        // Note: Access point ID will be provided via task overrides at runtime
+        // This allows dynamic per-agent isolation without redeploying task definition
+        authorizationConfig: {
+          iam: 'ENABLED',
+        },
       },
     });
 
@@ -120,13 +128,16 @@ export class AgentTaskConstruct extends Construct {
       }),
       environment: {
         MATRIX_HOMESERVER: 'http://conduit.anycompany.corp:6167',
+        MATRIX_DOMAIN: 'anycompany.corp',
+        COMMAND_CENTER_URL: 'http://command-center.anycompany.corp:8090',
       },
       secrets: {
         FLEET_SECRET: ecs.Secret.fromSecretsManager(fleetSecret, 'secret'),
+        COMMAND_CENTER_API_TOKEN: ecs.Secret.fromSecretsManager(fleetSecret, 'secret'),
       },
     }).addMountPoints({
       sourceVolume: volumeName,
-      containerPath: '/data',
+      containerPath: '/workspace',  // Changed from /data to /workspace for isolation
       readOnly: false,
     });
   }

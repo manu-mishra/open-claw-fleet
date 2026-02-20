@@ -41,6 +41,9 @@ export class FleetManager {
           fleetSecretArn: process.env.FLEET_SECRET_ARN!,
           ceoSecretArn: process.env.CEO_SECRET_ARN!,
           region: process.env.AWS_REGION || 'us-east-1',
+          matrixDomain: process.env.MATRIX_DOMAIN || 'anycompany.corp',
+          commandCenterUrl: process.env.COMMAND_CENTER_URL,
+          commandCenterApiToken: process.env.COMMAND_CENTER_API_TOKEN || process.env.FLEET_SECRET,
         };
         orchestrator = new EcsOrchestrator(ecsConfig);
       } else {
@@ -179,6 +182,17 @@ export class FleetManager {
     if (!ceoToken) {
       console.log('❌ Failed to get CEO token');
       return;
+    }
+
+    // Ensure task assignment bot account exists for Command Center notifications.
+    const taskAssignmentBotMatrixId =
+      config.commandCenter?.taskAssignmentBotMatrixId
+      || `@task.assignments:${domain}`;
+    const taskBotToken = await this.getMatrixToken(homeserver, taskAssignmentBotMatrixId);
+    if (!taskBotToken) {
+      console.log(`⚠️  Failed to provision task assignment bot ${taskAssignmentBotMatrixId}`);
+    } else {
+      console.log(`🤖 Task assignment bot ready: ${taskAssignmentBotMatrixId}`);
     }
 
     // Only create rooms that have deployed members

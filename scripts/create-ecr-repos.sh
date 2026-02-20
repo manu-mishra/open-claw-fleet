@@ -30,6 +30,8 @@ create_repo() {
 create_repo "open-claw-fleet/openclaw-agent"
 create_repo "open-claw-fleet/conduit-matrix"
 create_repo "open-claw-fleet/element-web"
+create_repo "open-claw-fleet/fleet-manager"
+create_repo "open-claw-fleet/command-center"
 
 echo ""
 echo "✅ All ECR repositories ready!"

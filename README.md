@@ -175,7 +175,7 @@ npm install
 
 This deploys:
 - Shared stack: ECR repositories
-- Dev stack: VPC, ECS cluster, services (Conduit, Element, Fleet Manager)
+- Dev stack: VPC, ECS cluster, services (Conduit, Element, Fleet Manager, Command Center)
 - All services start at `desiredCount: 1`
 - Fleet Manager handles agent lifecycle (no manual scaling required)
 
@@ -189,6 +189,8 @@ npm run fleet:connect
 Then open: **http://localhost:8080**
 
 You'll see the **Open-Claw-Fleet-Command-Center** with custom branding!
+
+Command Center (real-time task board + squad chat + agent operations UI): **http://localhost:8090**
 
 ### 4. Local Development (Matrix + Fleet Manager)
 
@@ -222,7 +224,7 @@ scripts/local-fleet.sh up
 
 Automatically connects to AWS-deployed services via SSM port forwarding:
 - Discovers bastion and service IPs
-- Forwards Conduit (Matrix) and Element (UI) ports
+- Forwards Conduit (Matrix), Element (UI), and Command Center ports
 - Single process, graceful shutdown
 - Located in `packages/tools/fleet-connect/`
 
