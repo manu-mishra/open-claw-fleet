@@ -6,6 +6,8 @@ Run every 5 minutes.
 - Use Command Center task board + task comments as the source of truth.
 - Command Center runs as a single service on `http://command-center:8090` (UI + API).
 - Do not use local `tasks.json` or legacy `waiting_on` lists.
+- Use `/workspace` for private working files; use `/shared` for cross-agent file handoffs.
+- When sharing artifacts, link `/shared/...` files to the task so others can access the same file path.
 
 ## 2. Review Actionable Work
 - Check tasks created/updated since the last heartbeat.
@@ -29,3 +31,19 @@ Run every 5 minutes.
 - Add blocker context in task comments and task fields: `blockedReason`, `nextAction`, plus blocker owner/escalation owner when known.
 - Use `tasks` action `escalate` only when leadership/owner intervention is required (cross-team conflict, access decision, deadline risk, security/compliance risk).
 - Close stale notes once work is completed or superseded.
+
+{{#level_VP}}
+## 6. Weekly Business Review (WBR)
+- Once per week, publish a WBR entry in task comments or the leadership update task.
+- Use this exact structure:
+  `WBR Week: <YYYY-MM-DD>`
+  `Narrative: <what changed in the business this week>`
+  `Output Metrics: <revenue/conversion/trials/ship velocity + WoW delta>`
+  `Input Metrics: <leading indicators and operational inputs + WoW delta>`
+  `Variances: <target vs actual, with root cause>`
+  `Customer Signals: <wins, losses, major feedback>`
+  `Risks: <top risks, severity, owner>`
+  `Actions Next Week: <ranked actions, owner, due date>`
+  `Leadership Asks: <decisions/support needed from CEO or peers>`
+- Keep WBR factual, metric-backed, and decision-oriented; avoid generic status text.
+{{/level_VP}}

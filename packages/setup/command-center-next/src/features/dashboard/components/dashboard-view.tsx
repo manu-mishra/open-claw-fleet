@@ -31,6 +31,41 @@ function taskMatchesDepartment(task: Task, department: string): boolean {
   return task.workItemType === "epic" && task.department === "Cross-Department";
 }
 
+function normalizeSearchText(value: string): string {
+  return String(value ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9@._:+/-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function splitSearchTerms(query: string): string[] {
+  const normalized = normalizeSearchText(query);
+  if (!normalized) {
+    return [];
+  }
+  return Array.from(new Set(normalized.split(" ").filter((term) => term.length > 0)));
+}
+
+function taskMatchesQuery(task: Task, query: string): boolean {
+  const terms = splitSearchTerms(query);
+  if (!terms.length) {
+    return true;
+  }
+  const searchable = normalizeSearchText(
+    [
+      task.id,
+      task.title,
+      task.description,
+      task.deliverable,
+      task.comments.map((comment) => comment.message).join(" "),
+      task.workItemType,
+      task.parentTaskId ?? "",
+    ].join(" "),
+  );
+  return terms.every((term) => searchable.includes(term));
+}
+
 async function readError(response: Response): Promise<string> {
   const fallback = `Request failed (${response.status})`;
   try {
@@ -57,6 +92,7 @@ export function DashboardView({ snapshot }: DashboardViewProps) {
   const [actionError, setActionError] = useState<string | null>(null);
 
   const [workItemType, setWorkItemType] = useState<"all" | WorkItemType>("all");
+  const [taskQuery, setTaskQuery] = useState("");
   const [department, setDepartment] = useState("");
   const [vp, setVp] = useState("");
   const [director, setDirector] = useState("");
@@ -108,9 +144,12 @@ export function DashboardView({ snapshot }: DashboardViewProps) {
       if (manager && task.manager !== manager) {
         return false;
       }
+      if (!taskMatchesQuery(task, taskQuery)) {
+        return false;
+      }
       return true;
     });
-  }, [tasks, workItemType, department, vp, director, manager]);
+  }, [tasks, workItemType, taskQuery, department, vp, director, manager]);
 
   const selectedTask = useMemo(() => tasks.find((task) => task.id === selectedTaskId) ?? null, [selectedTaskId, tasks]);
   const parentTask = useMemo(() => {
@@ -453,6 +492,54 @@ export function DashboardView({ snapshot }: DashboardViewProps) {
     upsertTask(updatedTask);
   }
 
+  async function uploadAttachment(taskId: string, file: File): Promise<void> {
+    setActionError(null);
+    const form = new FormData();
+    form.set("actorMatrixId", currentUser);
+    form.set("file", file, file.name || "attachment");
+
+    const response = await fetch(`/api/command-center/tasks/${encodeURIComponent(taskId)}/attachments`, {
+      method: "POST",
+      body: form,
+    });
+    if (!response.ok) {
+      throw new Error(await readError(response));
+    }
+
+    const raw = (await response.json()) as unknown;
+    const updatedTask = normalizeTask(raw);
+    if (!updatedTask) {
+      throw new Error("Failed to parse updated task after attachment upload");
+    }
+    upsertTask(updatedTask);
+    addLocalActivity(taskId, `${currentUser} attached ${file.name}`);
+  }
+
+  async function linkAttachment(taskId: string, sharedPath: string): Promise<void> {
+    setActionError(null);
+    const response = await fetch(`/api/command-center/tasks/${encodeURIComponent(taskId)}/attachments`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        actorMatrixId: currentUser,
+        linkPath: sharedPath,
+      }),
+    });
+    if (!response.ok) {
+      throw new Error(await readError(response));
+    }
+
+    const raw = (await response.json()) as unknown;
+    const updatedTask = normalizeTask(raw);
+    if (!updatedTask) {
+      throw new Error("Failed to parse updated task after shared-file link");
+    }
+    upsertTask(updatedTask);
+    addLocalActivity(taskId, `${currentUser} linked shared file ${sharedPath}`);
+  }
+
   return (
     <div className="cc-page">
       <div className="cc-metrics">
@@ -467,6 +554,8 @@ export function DashboardView({ snapshot }: DashboardViewProps) {
         <DashboardFilters
           workItemType={workItemType}
           onWorkItemTypeChange={(value) => setWorkItemType(value)}
+          taskQuery={taskQuery}
+          onTaskQueryChange={setTaskQuery}
           department={department}
           onDepartmentChange={(value) => {
             setDepartment(value);
@@ -497,6 +586,7 @@ export function DashboardView({ snapshot }: DashboardViewProps) {
             setVp("");
             setDirector("");
             setManager("");
+            setTaskQuery("");
           }}
         />
       </Panel>
@@ -550,6 +640,8 @@ export function DashboardView({ snapshot }: DashboardViewProps) {
         priorities={priorities}
         onSaveTask={saveTask}
         onAddComment={addComment}
+        onUploadAttachment={uploadAttachment}
+        onLinkAttachment={linkAttachment}
         onSearchPeople={searchPeople}
         onOpenTask={openTask}
         onCreateChildTask={openCreateChildTask}

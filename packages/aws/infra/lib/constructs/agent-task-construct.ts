@@ -90,10 +90,10 @@ export class AgentTaskConstruct extends Construct {
       },
     });
 
-    // Add EFS volume for agent persistence (access point will be specified at runtime)
-    const volumeName = 'agent-data';
+    // Per-agent workspace volume.
+    const workspaceVolumeName = 'agent-data';
     this.taskDefinition.addVolume({
-      name: volumeName,
+      name: workspaceVolumeName,
       efsVolumeConfiguration: {
         fileSystemId: props.fileSystem.fileSystemId,
         transitEncryption: 'ENABLED',
@@ -102,6 +102,17 @@ export class AgentTaskConstruct extends Construct {
         authorizationConfig: {
           iam: 'ENABLED',
         },
+      },
+    });
+
+    // Shared EFS path mounted by every agent for cross-agent artifacts.
+    const sharedVolumeName = 'agent-shared';
+    this.taskDefinition.addVolume({
+      name: sharedVolumeName,
+      efsVolumeConfiguration: {
+        fileSystemId: props.fileSystem.fileSystemId,
+        transitEncryption: 'ENABLED',
+        rootDirectory: '/shared',
       },
     });
 
@@ -130,14 +141,19 @@ export class AgentTaskConstruct extends Construct {
         MATRIX_HOMESERVER: 'http://conduit.anycompany.corp:6167',
         MATRIX_DOMAIN: 'anycompany.corp',
         COMMAND_CENTER_URL: 'http://command-center.anycompany.corp:8090',
+        AGENT_SHARED_ROOT: '/shared',
       },
       secrets: {
         FLEET_SECRET: ecs.Secret.fromSecretsManager(fleetSecret, 'secret'),
         COMMAND_CENTER_API_TOKEN: ecs.Secret.fromSecretsManager(fleetSecret, 'secret'),
       },
     }).addMountPoints({
-      sourceVolume: volumeName,
+      sourceVolume: workspaceVolumeName,
       containerPath: '/workspace',  // Changed from /data to /workspace for isolation
+      readOnly: false,
+    }, {
+      sourceVolume: sharedVolumeName,
+      containerPath: '/shared',
       readOnly: false,
     });
   }

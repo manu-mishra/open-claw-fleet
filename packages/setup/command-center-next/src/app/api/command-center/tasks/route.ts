@@ -1,6 +1,44 @@
 import { NextRequest, NextResponse } from "next/server";
 import { actorMatrixIdFromPayload, commandCenterBaseUrl, commandCenterServiceToken, relayJsonResponse } from "@/app/api/command-center/_utils";
 
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  const serviceToken = commandCenterServiceToken();
+  const baseUrl = commandCenterBaseUrl();
+  const query = request.nextUrl.search || "";
+
+  if (serviceToken) {
+    const response = await fetch(`${baseUrl}/api/agent/tasks${query}`, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        "x-command-center-token": serviceToken,
+      },
+      cache: "no-store",
+    });
+
+    return relayJsonResponse(response);
+  }
+
+  const cookieHeader = request.headers.get("cookie");
+  if (!cookieHeader) {
+    return NextResponse.json(
+      { error: "Authentication required: missing command-center session cookie or COMMAND_CENTER_API_TOKEN" },
+      { status: 401 },
+    );
+  }
+
+  const response = await fetch(`${baseUrl}/api/tasks${query}`, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      Cookie: cookieHeader,
+    },
+    cache: "no-store",
+  });
+
+  return relayJsonResponse(response);
+}
+
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const payload = (await request.json().catch(() => ({}))) as Record<string, unknown>;
   const actorMatrixId = actorMatrixIdFromPayload(payload, "@unknown:anycompany.corp");

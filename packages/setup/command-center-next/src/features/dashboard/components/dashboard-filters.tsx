@@ -3,6 +3,8 @@ import type { WorkItemType } from "@/lib/command-center/types";
 interface DashboardFiltersProps {
   workItemType: "all" | WorkItemType;
   onWorkItemTypeChange: (value: "all" | WorkItemType) => void;
+  taskQuery: string;
+  onTaskQueryChange: (value: string) => void;
   department: string;
   onDepartmentChange: (value: string) => void;
   vp: string;
@@ -23,6 +25,8 @@ const WORK_ITEM_OPTIONS: Array<"all" | WorkItemType> = ["all", "epic", "feature"
 export function DashboardFilters({
   workItemType,
   onWorkItemTypeChange,
+  taskQuery,
+  onTaskQueryChange,
   department,
   onDepartmentChange,
   vp,
@@ -39,6 +43,16 @@ export function DashboardFilters({
 }: DashboardFiltersProps) {
   return (
     <div className="cc-filters cc-filters-horizontal">
+      <label className="cc-filter-inline-field cc-filter-inline-field--search">
+        <span>Search</span>
+        <input
+          type="search"
+          placeholder="title, description, DoD, comments"
+          value={taskQuery}
+          onChange={(event) => onTaskQueryChange(event.target.value)}
+        />
+      </label>
+
       <label className="cc-filter-inline-field">
         <span>Work Item</span>
         <select value={workItemType} onChange={(event) => onWorkItemTypeChange(event.target.value as "all" | WorkItemType)}>

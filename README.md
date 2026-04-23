@@ -17,11 +17,12 @@ Open-Claw-Fleet transforms the way organizations leverage AI by deploying comple
 ### What is OpenClaw?
 
 OpenClaw is an open-source, autonomous AI agent framework that:
-- Runs locally with persistent memory across sessions
-- Executes real tasks (not just suggestions)
-- Integrates with messaging platforms (WhatsApp, Telegram, Discord, Slack, etc.)
-- Provides tool execution capabilities (shell commands, browser automation, file operations)
-- Supports extensible skills through a modular plugin system
+
+-   Runs locally with persistent memory across sessions
+-   Executes real tasks (not just suggestions)
+-   Integrates with messaging platforms (WhatsApp, Telegram, Discord, Slack, etc.)
+-   Provides tool execution capabilities (shell commands, browser automation, file operations)
+-   Supports extensible skills through a modular plugin system
 
 Built in TypeScript, OpenClaw operates as a conversation-first agent that can autonomously handle complex workflows, remember context, and coordinate across multiple services.
 
@@ -29,16 +30,16 @@ Built in TypeScript, OpenClaw operates as a conversation-first agent that can au
 
 Traditional AI assistants are limited to single-user, single-session interactions. Open-Claw-Fleet scales this to organizational levels:
 
-- **Scalability**: Deploy hundreds or thousands of agents simultaneously
-- **Organizational Structure**: Mirror real company hierarchies with AI agents
-- **Isolation**: Each agent runs in its own secure container
-- **Persistence**: Agents maintain memory and context across restarts
-- **AWS Integration**: Leverage ECS, VPC, IAM, and other AWS services for enterprise deployment
-- **Cost Efficiency**: Pay only for active container time
+-   **Scalability**: Deploy hundreds or thousands of agents simultaneously
+-   **Organizational Structure**: Mirror real company hierarchies with AI agents
+-   **Isolation**: Each agent runs in its own secure container
+-   **Persistence**: Agents maintain memory and context across restarts
+-   **AWS Integration**: Leverage ECS, VPC, IAM, and other AWS services for enterprise deployment
+-   **Cost Efficiency**: Pay only for active container time
 
 ## Architecture
 
-```
+```vbnet
 ┌─────────────────────────────────────────────────────────┐
 │                     AWS Cloud                           │
 │                                                          │
@@ -77,42 +78,45 @@ Traditional AI assistants are limited to single-user, single-session interaction
 
 Deploy a complete company structure as AI agents:
 
-- **Executive Layer**: CEO agent for strategic decisions and oversight
-- **Management Layer**: VP and Director agents for departmental coordination
-- **Operational Layer**: Manager agents for team leadership
-- **Individual Contributors**: Developer, analyst, and specialist agents
-- **Support Functions**: HR, Legal, Finance, and Operations agents
+-   **Executive Layer**: CEO agent for strategic decisions and oversight
+-   **Management Layer**: VP and Director agents for departmental coordination
+-   **Operational Layer**: Manager agents for team leadership
+-   **Individual Contributors**: Developer, analyst, and specialist agents
+-   **Support Functions**: HR, Legal, Finance, and Operations agents
 
 ### Department Examples
 
 **Engineering Department**
-- VP of Engineering (coordinates all engineering efforts)
-- Engineering Managers (oversee specific teams)
-- Developer Agents (write code, review PRs, fix bugs)
-- DevOps Agents (manage deployments, monitor infrastructure)
+
+-   VP of Engineering (coordinates all engineering efforts)
+-   Engineering Managers (oversee specific teams)
+-   Developer Agents (write code, review PRs, fix bugs)
+-   DevOps Agents (manage deployments, monitor infrastructure)
 
 **Legal Department**
-- General Counsel (strategic legal oversight)
-- Contract Review Agents (analyze agreements)
-- Compliance Agents (monitor regulatory requirements)
+
+-   General Counsel (strategic legal oversight)
+-   Contract Review Agents (analyze agreements)
+-   Compliance Agents (monitor regulatory requirements)
 
 **Human Resources**
-- HR Director (workforce planning)
-- Recruiting Agents (candidate screening)
-- Onboarding Agents (new hire processes)
+
+-   HR Director (workforce planning)
+-   Recruiting Agents (candidate screening)
+-   Onboarding Agents (new hire processes)
 
 ## Features
 
-- **Container-Based Deployment**: Each agent runs in isolated ECS containers
-- **Persistent Memory**: EFS-backed storage ensures agents remember context across restarts
-- **Multi-Channel Communication**: Agents connect to Slack, Discord, email, and other platforms
-- **Role-Based Access**: IAM policies and security groups enforce agent permissions
-- **Monitoring**: CloudWatch integration for logs, metrics, and alerts
-- **Infrastructure as Code**: AWS CDK for reproducible deployments
+-   **Container-Based Deployment**: Each agent runs in isolated ECS containers
+-   **Persistent Memory**: EFS-backed storage ensures agents remember context across restarts
+-   **Multi-Channel Communication**: Agents connect to Slack, Discord, email, and other platforms
+-   **Role-Based Access**: IAM policies and security groups enforce agent permissions
+-   **Monitoring**: CloudWatch integration for logs, metrics, and alerts
+-   **Infrastructure as Code**: AWS CDK for reproducible deployments
 
 ## Project Structure
 
-```
+```graphql
 open-claw-fleet/
 ├── config/                 # Environments, templates, local compose
 │   ├── templates/          # Shared templates + skills
@@ -133,16 +137,16 @@ open-claw-fleet/
 
 ## Important Notes
 
-- `poc/` is reference only and must not be modified.
-- `sample/` is reference only and must not be modified.
+-   `poc/` is reference only and must not be modified.
+-   `sample/` is reference only and must not be modified.
 
 ## Prerequisites
 
-- **AWS Account** with appropriate permissions
-- **Node.js** ≥ 20.0.0
-- **AWS CDK** CLI installed (`npm install -g aws-cdk`)
-- **Docker** for local testing
-- **AWS CLI + Session Manager Plugin** (required by `fleet-connect`; no manual CLI steps)
+-   **AWS Account** with appropriate permissions
+-   **Node.js** ≥ 20.0.0
+-   **AWS CDK** CLI installed (`npm install -g aws-cdk`)
+-   **Docker** for local testing
+-   **AWS CLI + Session Manager Plugin** (required by `fleet-connect`; no manual CLI steps)
 
 ## Documentation
 
@@ -150,15 +154,15 @@ open-claw-fleet/
 
 ### Quick Links
 
-- **[Architecture](docs/architecture.md)** - System design and AWS components
-- **[Deployment Guide](docs/deployment-guide.md)** - Step-by-step AWS deployment
-- **[AWS Setup](docs/aws-environment-setup.md)** - Configuration and secrets management
-- **[Agent Deployment](docs/findings/agent-deployment.md)** - Challenges, solutions, and lessons learned
-- **[Troubleshooting](docs/TROUBLESHOOTING.md)** - Common issues and solutions
+-   **[Architecture](docs/architecture.md)** - System design and AWS components
+-   **[Deployment Guide](docs/deployment-guide.md)** - Step-by-step AWS deployment
+-   **[AWS Setup](docs/aws-environment-setup.md)** - Configuration and secrets management
+-   **[Agent Deployment](docs/findings/agent-deployment.md)** - Challenges, solutions, and lessons learned
+-   **[Troubleshooting](docs/TROUBLESHOOTING.md)** - Common issues and solutions
 
 ## Quick Start
 
-### 1. Clone and Install
+### 1\. Clone and Install
 
 ```bash
 git clone https://github.com/manu-mishra/open-claw-fleet.git
@@ -166,7 +170,7 @@ cd open-claw-fleet
 npm install
 ```
 
-### 2. Deploy to AWS
+### 2\. Deploy to AWS
 
 ```bash
 # Deploy infrastructure (builds and pushes all images)
@@ -174,25 +178,26 @@ npm install
 ```
 
 This deploys:
-- Shared stack: ECR repositories
-- Dev stack: VPC, ECS cluster, services (Conduit, Element, Fleet Manager, Command Center)
-- All services start at `desiredCount: 1`
-- Fleet Manager handles agent lifecycle (no manual scaling required)
 
-### 3. Connect to Element UI
+-   Shared stack: ECR repositories
+-   Dev stack: VPC, ECS cluster, services (Conduit, Element, Fleet Manager, Command Center)
+-   All services start at `desiredCount: 1`
+-   Fleet Manager handles agent lifecycle (no manual scaling required)
+
+### 3\. Connect to Element UI
 
 ```bash
 # Single command to connect to all services
 npm run fleet:connect
 ```
 
-Then open: **http://localhost:8080**
+Then open: **[http://localhost:8080](http://localhost:8080)**
 
 You'll see the **Open-Claw-Fleet-Command-Center** with custom branding!
 
-Command Center (real-time task board + squad chat + agent operations UI): **http://localhost:8090**
+Command Center (real-time task board + squad chat + agent operations UI): **[http://localhost:8090](http://localhost:8090)**
 
-### 4. Local Development (Matrix + Fleet Manager)
+### 4\. Local Development (Matrix + Fleet Manager)
 
 ```bash
 # Build workspace packages
@@ -223,36 +228,38 @@ scripts/local-fleet.sh up
 ### Fleet Connect (`npm run fleet:connect`)
 
 Automatically connects to AWS-deployed services via SSM port forwarding:
-- Discovers bastion and service IPs
-- Forwards Conduit (Matrix), Element (UI), and Command Center ports
-- Single process, graceful shutdown
-- Located in `packages/tools/fleet-connect/`
+
+-   Discovers bastion and service IPs
+-   Forwards Conduit (Matrix), Element (UI), and Command Center ports
+-   Single process, graceful shutdown
+-   Located in `packages/tools/fleet-connect/`
 
 ### Fleet Config (`npm run fleet:config`)
 
 Terminal UI for editing fleet configuration:
-- Manage agent definitions
-- Configure workspaces
-- Edit Matrix settings
-- Located in `packages/setup/fleet-config/`
+
+-   Manage agent definitions
+-   Configure workspaces
+-   Edit Matrix settings
+-   Located in `packages/setup/fleet-config/`
 
 ## Roadmap
 
-- [x] Base ECS cluster infrastructure
-- [x] Container definitions for OpenClaw agents
-- [x] EFS integration for persistent storage
-- [x] Multi-agent communication patterns (Matrix/Conduit)
-- [x] Custom branding (Open-Claw-Fleet-Command-Center)
-- [x] SSM-based secure access (fleet-connect tool)
-- [x] Deterministic password derivation for agents
-- [x] Agent deployment and Matrix authentication
-- [x] OpenClaw gateway running in containers
-- [ ] Agent health monitoring and auto-restart
-- [ ] Role-based agent templates (CEO, VP, Manager, etc.)
-- [ ] Messaging platform integrations (WhatsApp, Telegram, Discord)
-- [ ] Monitoring and observability dashboards
-- [ ] Auto-scaling policies
-- [ ] Web UI for fleet management
+-    Base ECS cluster infrastructure
+-    Container definitions for OpenClaw agents
+-    EFS integration for persistent storage
+-    Multi-agent communication patterns (Matrix/Conduit)
+-    Custom branding (Open-Claw-Fleet-Command-Center)
+-    SSM-based secure access (fleet-connect tool)
+-    Deterministic password derivation for agents
+-    Agent deployment and Matrix authentication
+-    OpenClaw gateway running in containers
+-    Agent health monitoring and auto-restart
+-    Role-based agent templates (CEO, VP, Manager, etc.)
+-    Messaging platform integrations (WhatsApp, Telegram, Discord)
+-    Monitoring and observability dashboards
+-    Auto-scaling policies
+-    Web UI for fleet management
 
 ## Proof of Concepts
 
@@ -261,20 +268,41 @@ Terminal UI for editing fleet configuration:
 Multi-agent AI system using OpenClaw in Docker containers communicating via Matrix protocol.
 
 **What's Working:**
-- Agents register and communicate via Matrix (Conduit server)
-- Auto-created rooms based on org hierarchy (#executive-team, #engineering-leadership)
-- People directory plugin for org lookups (1001 employees)
-- Agent-to-agent conversations (VP ↔ Director)
-- GPT OSS and Claude Haiku models via Amazon Bedrock
+
+-   Agents register and communicate via Matrix (Conduit server)
+-   Auto-created rooms based on org hierarchy (#executive-team, #engineering-leadership)
+-   People directory plugin for org lookups (1001 employees)
+-   Agent-to-agent conversations (VP ↔ Director)
+-   GPT OSS and Claude Haiku models via Amazon Bedrock
 
 **Agents Deployed:**
-| Agent | Role | Matrix ID |
-|-------|------|-----------|
-| Braxton Roberts | VP of Engineering | @braxton.roberts:anycompany.corp |
-| Dylan Thomas | Director of Platform | @dylan.thomas:anycompany.corp |
-| Manu Mishra | CEO (human) | @manu.mishra:anycompany.corp |
+
+Agent
+
+Role
+
+Matrix ID
+
+Braxton Roberts
+
+VP of Engineering
+
+@braxton.roberts:anycompany.corp
+
+Dylan Thomas
+
+Director of Platform
+
+@dylan.thomas:anycompany.corp
+
+Manu Mishra
+
+CEO (human)
+
+@manu.mishra:anycompany.corp
 
 **Quick Start:**
+
 ```bash
 cd poc/matrix-agents
 # Set AWS credentials in your environment if using Bedrock
@@ -298,12 +326,12 @@ See [poc/matrix-agents/README.md](poc/matrix-agents/README.md) for full document
 
 Running autonomous AI agents at scale requires careful security planning:
 
-- **Network Isolation**: Agents run in private subnets with controlled egress
-- **Credential Management**: AWS Secrets Manager for API keys and tokens
-- **IAM Policies**: Least-privilege access for each agent role
-- **Container Security**: Regular image scanning and updates
-- **Audit Logging**: CloudTrail and CloudWatch for compliance
-- **Approval Workflows**: Human-in-the-loop for sensitive operations
+-   **Network Isolation**: Agents run in private subnets with controlled egress
+-   **Credential Management**: AWS Secrets Manager for API keys and tokens
+-   **IAM Policies**: Least-privilege access for each agent role
+-   **Container Security**: Regular image scanning and updates
+-   **Audit Logging**: CloudTrail and CloudWatch for compliance
+-   **Approval Workflows**: Human-in-the-loop for sensitive operations
 
 ## Contributing
 
@@ -311,11 +339,11 @@ Contributions are welcome! This is an open-source project aimed at democratizing
 
 ### Areas for Contribution
 
-- Infrastructure improvements
-- Agent templates and configurations
-- Documentation and examples
-- Security enhancements
-- Integration with additional services
+-   Infrastructure improvements
+-   Agent templates and configurations
+-   Documentation and examples
+-   Security enhancements
+-   Integration with additional services
 
 ## License
 
@@ -323,24 +351,25 @@ MIT License - see [LICENSE](LICENSE) file for details
 
 ## Acknowledgments
 
-- [OpenClaw](https://openclaw.ai) - The autonomous AI agent framework powering this fleet
-- AWS CDK team for infrastructure-as-code tooling
-- The open-source AI community
+-   [OpenClaw](https://openclaw.ai) - The autonomous AI agent framework powering this fleet
+-   AWS CDK team for infrastructure-as-code tooling
+-   The open-source AI community
 
 ## Resources
 
-- [OpenClaw Documentation](https://docs.openclaw.ai/)
-- [OpenClaw GitHub](https://github.com/openclaw/openclaw)
-- [AWS ECS Documentation](https://docs.aws.amazon.com/ecs/)
-- [AWS CDK Documentation](https://docs.aws.amazon.com/cdk/)
+-   [OpenClaw Documentation](https://docs.openclaw.ai/)
+-   [OpenClaw GitHub](https://github.com/openclaw/openclaw)
+-   [AWS ECS Documentation](https://docs.aws.amazon.com/ecs/)
+-   [AWS CDK Documentation](https://docs.aws.amazon.com/cdk/)
 
 ## Support
 
 For questions, issues, or discussions:
-- Open an issue on GitHub
-- Join our community Discord (coming soon)
-- Check the documentation wiki
 
----
+-   Open an issue on GitHub
+-   Join our community Discord (coming soon)
+-   Check the documentation wiki
+
+* * *
 
 **Note**: This project is in active development. The infrastructure and agent deployment workflows are being built iteratively. Star and watch this repository for updates.

@@ -38,6 +38,8 @@ interface TaskDetailsProps {
     },
   ) => Promise<void>;
   onAddComment: (taskId: string, message: string) => Promise<void>;
+  onUploadAttachment: (taskId: string, file: File) => Promise<void>;
+  onLinkAttachment: (taskId: string, sharedPath: string) => Promise<void>;
   onSearchPeople: (query: string) => Promise<DirectoryPerson[]>;
   onOpenTask: (taskId: string) => void;
   onCreateChildTask: (parentTask: Task) => void;
@@ -91,6 +93,8 @@ export function TaskDetails({
   priorities,
   onSaveTask,
   onAddComment,
+  onUploadAttachment,
+  onLinkAttachment,
   onSearchPeople,
   onOpenTask,
   onCreateChildTask,
@@ -110,9 +114,11 @@ export function TaskDetails({
   const [parentSearchResults, setParentSearchResults] = useState<Task[]>([]);
   const [parentResultsOpen, setParentResultsOpen] = useState(false);
   const [commentMessage, setCommentMessage] = useState("");
+  const [sharedLinkPath, setSharedLinkPath] = useState("");
   const [statusText, setStatusText] = useState("");
   const [saving, setSaving] = useState(false);
   const [sendingComment, setSendingComment] = useState(false);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
 
   const tasksById = useMemo(() => new Map(allTasks.map((entry) => [entry.id, entry])), [allTasks]);
 
@@ -138,6 +144,7 @@ export function TaskDetails({
     setParentSearchResults([]);
     setParentResultsOpen(false);
     setCommentMessage("");
+    setSharedLinkPath("");
     setStatusText("");
   }, [task, tasksById]);
 
@@ -260,6 +267,43 @@ export function TaskDetails({
       setSendingComment(false);
     }
   }
+
+  async function handleUploadAttachment(file: File): Promise<void> {
+    if (!file) {
+      return;
+    }
+    setUploadingAttachment(true);
+    setStatusText(`Uploading ${file.name}...`);
+    try {
+      await onUploadAttachment(taskId, file);
+      setStatusText(`Attached file: ${file.name}`);
+    } catch (error) {
+      setStatusText(error instanceof Error ? error.message : "Failed to upload attachment");
+    } finally {
+      setUploadingAttachment(false);
+    }
+  }
+
+  async function handleLinkAttachment(): Promise<void> {
+    const trimmed = sharedLinkPath.trim();
+    if (!trimmed) {
+      setStatusText("Shared file path is required.");
+      return;
+    }
+    setUploadingAttachment(true);
+    setStatusText("Linking shared file...");
+    try {
+      await onLinkAttachment(taskId, trimmed);
+      setSharedLinkPath("");
+      setStatusText("Linked shared file to task.");
+    } catch (error) {
+      setStatusText(error instanceof Error ? error.message : "Failed to link shared file");
+    } finally {
+      setUploadingAttachment(false);
+    }
+  }
+
+  const attachments = [...(task.attachments ?? [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
   return (
     <div className="cc-task-detail-layout">
@@ -505,6 +549,67 @@ export function TaskDetails({
             </div>
           ) : (
             <p className="cc-empty-copy">No child tasks.</p>
+          )}
+        </section>
+
+        <section className="cc-log">
+          <h4>Attachments</h4>
+          <div className="cc-field">
+            <span>Upload File</span>
+            <input
+              type="file"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) {
+                  void handleUploadAttachment(file);
+                }
+                event.currentTarget.value = "";
+              }}
+              disabled={uploadingAttachment}
+            />
+          </div>
+
+          <div className="cc-field">
+            <span>Link Shared Path</span>
+            <div className="cc-inline-input">
+              <input
+                value={sharedLinkPath}
+                onChange={(event) => setSharedLinkPath(event.target.value)}
+                placeholder="shared/path/to/file.pdf"
+                disabled={uploadingAttachment}
+              />
+              <button type="button" className="cc-button is-secondary" onClick={handleLinkAttachment} disabled={uploadingAttachment}>
+                Link
+              </button>
+            </div>
+          </div>
+
+          {attachments.length ? (
+            <div className="cc-list">
+              {attachments.map((attachment) => {
+                const base = `/api/command-center/tasks/${encodeURIComponent(task.id)}/attachments/${encodeURIComponent(attachment.id)}`;
+                return (
+                  <article key={attachment.id} className="cc-list-item">
+                    <div>
+                      <p>{attachment.fileName}</p>
+                      <small>
+                        {attachment.contentType} · {attachment.sizeBytes} bytes · {attachment.sourceKind}
+                      </small>
+                    </div>
+                    <div className="cc-inline-actions">
+                      <a className="cc-button is-secondary" href={`${base}?inline=1`} target="_blank" rel="noreferrer">
+                        View
+                      </a>
+                      <a className="cc-button is-secondary" href={base} target="_blank" rel="noreferrer">
+                        Download
+                      </a>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="cc-empty-copy">No attachments yet.</p>
           )}
         </section>
 

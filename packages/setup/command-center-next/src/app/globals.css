@@ -1330,6 +1330,44 @@ select {
   color: #294d74;
 }
 
+.cc-wbr-page {
+  gap: 8px;
+}
+
+.cc-wbr-controls {
+  align-items: center;
+}
+
+.cc-wbr-week-field {
+  flex: 0 0 180px;
+  min-width: 180px;
+}
+
+.cc-wbr-week-field input {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  min-height: 31px;
+  padding: 5px 7px;
+}
+
+.cc-wbr-week-field input:focus {
+  outline: 2px solid var(--ring);
+  border-color: #1a8e78;
+}
+
+.cc-wbr-row {
+  cursor: pointer;
+}
+
+.cc-wbr-row:hover td {
+  background: #f5f9ff;
+}
+
+.cc-wbr-row.is-active td {
+  background: #e7f2ff;
+}
+
 .cc-log textarea {
   border: 1px solid var(--border);
   border-radius: 10px;

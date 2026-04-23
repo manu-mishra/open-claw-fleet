@@ -56,6 +56,7 @@ export class EcsOrchestrator implements Orchestrator {
       { name: 'MATRIX_HOMESERVER', value: homeserver },
       { name: 'MATRIX_DOMAIN', value: this.config.matrixDomain || 'anycompany.corp' },
       { name: 'WORKSPACE_PATH', value: '/workspace' }, // Now isolated via access point
+      { name: 'AGENT_SHARED_ROOT', value: '/shared' },
       { name: 'RUNTIME_PATH', value: params.runtimePath },
       { name: 'FLEET_SECRET_ARN', value: this.config.fleetSecretArn },
       ...(this.config.commandCenterUrl

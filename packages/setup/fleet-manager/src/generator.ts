@@ -48,21 +48,31 @@ export async function generateWorkspaces(
 
       // Generate all template files
       const context = buildContext(agent, byMatrixId, deployedIds);
+      const roleDepartmentGuidance = await composeRoleDepartmentGuidance(agent, opts.templatesDir, context);
+      const strategicGuidance = await composeStrategicGuidance(opts.templatesDir, context);
 
       // IDENTITY.md from shared template
       const identityTpl = await loadTemplate(opts.templatesDir, 'shared/IDENTITY.md');
-      await writeFile(join(agentDir, 'IDENTITY.md'), render(identityTpl, context));
+      const identityBase = render(identityTpl, context).trim();
+      const identityContent = roleDepartmentGuidance
+        ? `${identityBase}\n\n## Operating Mandate\n\n${roleDepartmentGuidance}\n`
+        : `${identityBase}\n`;
+      await writeFile(join(agentDir, 'IDENTITY.md'), identityContent);
 
       // SOUL.md from shared template
       const soulTpl = await loadTemplate(opts.templatesDir, 'shared/SOUL.md');
-      await writeFile(join(agentDir, 'SOUL.md'), render(soulTpl, context));
+      const soulBase = render(soulTpl, context).trim();
+      const soulContent = strategicGuidance
+        ? `${soulBase}\n\n## Strategic Operating Guidance\n\n${strategicGuidance}\n`
+        : `${soulBase}\n`;
+      await writeFile(join(agentDir, 'SOUL.md'), soulContent);
 
       // AGENTS.md composed from level + department
       const agentsMd = await composeAgentsMd(agent, config, opts.templatesDir, context);
       await writeFile(join(agentDir, 'AGENTS.md'), agentsMd);
 
-      // Runtime system prompt composed from shared + role + department templates
-      const systemPrompt = await composeSystemPrompt(agent, opts.templatesDir, context);
+      // Runtime system prompt should remain concise and messaging-focused.
+      const systemPrompt = await composeMatrixSystemPrompt(agent, opts.templatesDir, context);
 
       // HEARTBEAT.md from shared
       const heartbeatTpl = await loadTemplate(opts.templatesDir, 'shared/HEARTBEAT.md');
@@ -214,18 +224,29 @@ async function composeAgentsMd(
   if (!deptTpl) deptTpl = await loadTemplate(templatesDir, 'departments/_default.md');
   if (deptTpl) parts.push(render(deptTpl, context));
 
-  return parts.join('\n\n---\n\n') || '# Agent\n\nNo templates configured.';
+  const memoryConvention = [
+    '# Memory Convention',
+    '',
+    '- Before replying to a colleague, check person memory first.',
+    '- If this is your first interaction with that person, create a person-specific memory note.',
+    '- If they ask about tasks/status/blockers, check active task memory across sessions before replying.',
+    '- Parent session owns side effects: task status/comments/escalations and Matrix communications.',
+    '- Subagents are execution-only workers: they return outputs to parent; they do not perform external updates.',
+    '- Person memory path: `/workspace/memory/people/<matrix-id>.md`',
+    '- Active task/session memory path: `/workspace/memory/tasks/active.md`',
+    '- Use `/workspace` for private notes and `/shared` for files intended for others.',
+  ].join('\n');
+
+  const base = parts.join('\n\n---\n\n').trim() || '# Agent\n\nNo templates configured.';
+  return `${base}\n\n---\n\n${memoryConvention}\n`;
 }
 
-async function composeSystemPrompt(
+async function composeRoleDepartmentGuidance(
   agent: SelectedAgent,
   templatesDir: string,
   context: Record<string, any>
 ): Promise<string> {
   const parts: string[] = [];
-
-  const sharedTpl = await loadTemplate(templatesDir, 'prompts/shared/system.md');
-  if (sharedTpl) parts.push(render(sharedTpl, context));
 
   let roleTpl = await loadTemplate(templatesDir, `prompts/roles/${agent.level}.md`);
   if (!roleTpl) roleTpl = await loadTemplate(templatesDir, 'prompts/roles/_default.md');
@@ -236,6 +257,25 @@ async function composeSystemPrompt(
   if (deptTpl) parts.push(render(deptTpl, context));
 
   return parts.join('\n\n').trim();
+}
+
+async function composeStrategicGuidance(
+  templatesDir: string,
+  context: Record<string, any>
+): Promise<string> {
+  const sharedTpl = await loadTemplate(templatesDir, 'prompts/shared/system.md');
+  if (!sharedTpl) return '';
+  return render(sharedTpl, context).trim();
+}
+
+async function composeMatrixSystemPrompt(
+  agent: SelectedAgent,
+  templatesDir: string,
+  context: Record<string, any>
+): Promise<string> {
+  const matrixTpl = await loadTemplate(templatesDir, 'prompts/shared/matrix.md');
+  if (matrixTpl) return render(matrixTpl, context).trim();
+  return defaultSystemPrompt(agent);
 }
 
 async function copySkills(skills: string[], templatesDir: string, agentDir: string): Promise<void> {
@@ -259,7 +299,7 @@ async function copySkills(skills: string[], templatesDir: string, agentDir: stri
 }
 
 function defaultSystemPrompt(agent: SelectedAgent): string {
-  return `You are ${agent.name}, ${agent.title} at AnyCompany Corp. Stay in character. Use the "people" tool for org lookups and the "tasks" tool for Command Center tasks. If you cannot proceed, set the task to blocked with blockedReason and nextAction.`;
+  return `You are ${agent.name}, ${agent.title} at AnyCompany Corp. Stay in character. Use the "people" tool for org lookups and the "tasks" tool for Command Center tasks. Use /workspace for local work and /shared for cross-agent files. If you cannot proceed, set the task to blocked with blockedReason and nextAction.`;
 }
 
 function renderConfig(agent: SelectedAgent, config: FleetConfig, systemPrompt: string): object {
@@ -273,7 +313,13 @@ function renderConfig(agent: SelectedAgent, config: FleetConfig, systemPrompt: s
       }
     },
     tools: {
-      profile: "full"
+      profile: "full",
+      subagents: {
+        tools: {
+          // Parent session owns task mutations and external messaging.
+          deny: ["message", "tasks"]
+        }
+      }
     },
     agents: {
       defaults: {

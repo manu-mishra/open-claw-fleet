@@ -52,6 +52,38 @@ export function normalizeTask(candidate: unknown): Task | null {
         .filter((value): value is NonNullable<typeof value> => Boolean(value))
     : [];
 
+  const attachments = Array.isArray(entry.attachments)
+    ? entry.attachments
+        .map((attachment) => {
+          if (!attachment || typeof attachment !== "object") {
+            return null;
+          }
+          const value = attachment as Record<string, unknown>;
+          if (
+            typeof value.id !== "string"
+            || typeof value.fileName !== "string"
+            || typeof value.contentType !== "string"
+            || typeof value.sizeBytes !== "number"
+            || typeof value.sharedPath !== "string"
+            || typeof value.createdAt !== "string"
+            || typeof value.createdByMatrixId !== "string"
+          ) {
+            return null;
+          }
+          return {
+            id: value.id,
+            fileName: value.fileName,
+            contentType: value.contentType,
+            sizeBytes: value.sizeBytes,
+            sharedPath: value.sharedPath,
+            sourceKind: value.sourceKind === "link" ? ("link" as const) : ("upload" as const),
+            createdAt: value.createdAt,
+            createdByMatrixId: value.createdByMatrixId,
+          };
+        })
+        .filter((value): value is NonNullable<typeof value> => Boolean(value))
+    : [];
+
   return {
     id: entry.id,
     title: entry.title,
@@ -82,6 +114,7 @@ export function normalizeTask(candidate: unknown): Task | null {
     createdAt: typeof entry.createdAt === "string" ? entry.createdAt : new Date().toISOString(),
     updatedAt: typeof entry.updatedAt === "string" ? entry.updatedAt : new Date().toISOString(),
     comments,
+    attachments,
   };
 }
 

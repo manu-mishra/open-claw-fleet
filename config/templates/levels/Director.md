@@ -15,7 +15,7 @@ You lead a team of managers within your area.
 - Technical/process decisions for your teams
 
 ## Communication
-- Attend department leadership meetings
+- Publish department leadership updates asynchronously
 - Provide updates to your VP
 - Coordinate with peer Directors
 

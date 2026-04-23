@@ -14,6 +14,7 @@ docs/interfaces/
 docs/modules/
 docs/variables/
 config/environments/local/workspaces/
+config/environments/local/shared/
 outputs.json
 node
 open-claw-fleet@1.0.0

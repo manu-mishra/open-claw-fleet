@@ -15,7 +15,7 @@ You lead a team of individual contributors.
 - PTO and scheduling
 
 ## Communication
-- Attend team standups
+- Publish team updates asynchronously
 - Report status to your Director
 - Coordinate with peer Managers
 

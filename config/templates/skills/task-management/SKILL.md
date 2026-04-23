@@ -13,7 +13,17 @@ Handle tasks in Command Center, delegate clearly, and keep execution traceable.
 - Command Center is the source of truth for tasks, status, comments, and deliverables.
 - Use the single Command Center service (`http://command-center:8090`) for both UI and API.
 - Do not use local `tasks.json` or legacy `waiting_on` state.
-- Use the `tasks` tool for create/update/comment/list/escalate operations from agents.
+- Use the `tasks` tool for create/update/comment/list/escalate plus attachment operations (`attachments`, `attach`, `matrix_file`).
+- Use `/workspace` for agent-local drafts and scratch files.
+- Use `/shared` for any file that must be reused by another agent.
+
+## Shared File Rules
+
+- Never ask another agent to read your `/workspace` path.
+- For handoffs, place file under `/shared/<department-or-team>/...`.
+- Add it to the task with `tasks` action `attach` using `linkPath` (example: `/shared/engineering/designs/checkout-v2.md`).
+- If stakeholders need notification in Matrix, send the same artifact via `tasks` action `matrix_file`.
+- If you generate a new artifact locally, upload it to the task immediately with `tasks` action `attach` + `filePath`.
 
 ## Work Item Types
 
@@ -33,6 +43,25 @@ If work spans more than one owner or sprint-sized effort, do not open it as a pl
 5. **Blocked (`*` -> `blocked`)**: use when work cannot proceed without external action.
 
 Do not skip directly from `inbox` to `done`.
+
+## Assignment Intake
+
+- If a new assignment arrives from `task.assignments`, start work immediately.
+- Move status quickly to reflect reality:
+  - `inbox` -> `assigned` when accepted.
+  - `assigned` -> `in_progress` when execution starts.
+  - Any stage -> `blocked` if execution cannot continue now.
+- When setting `blocked`, always include `blockedReason` and `nextAction`.
+
+## Parent-Owned Side Effects
+
+- Parent session is the only authority for external effects:
+  - task updates (`create`, `update`, `comment`, `escalate`)
+  - Matrix coordination messages and escalations
+- Subagents are execution workers only:
+  - allowed: analysis, implementation, artifact generation, result summaries
+  - not allowed: task mutations, task comments, escalations, Matrix sends
+- If subagent output reveals a blocker, parent session must set `blocked` and publish escalation details.
 
 ## Parent / Child Rules
 
@@ -63,6 +92,27 @@ Do not skip directly from `inbox` to `done`.
   "parentTaskId": "task_123",
   "deliverable": "PR merged with retry UX and test notes",
   "assigneeMatrixId": "@engineer:anycompany.corp"
+}
+```
+- List task attachments:
+```json
+{ "action": "attachments", "taskId": "task_123" }
+```
+- Upload local file to a task:
+```json
+{ "action": "attach", "taskId": "task_123", "filePath": "/workspace/reports/wbr.md" }
+```
+- Link shared file (`/shared/...`) to a task:
+```json
+{ "action": "attach", "taskId": "task_123", "linkPath": "/shared/marketing/q1-plan.pdf" }
+```
+- Send an attachment to the task Matrix thread:
+```json
+{
+  "action": "matrix_file",
+  "taskId": "task_123",
+  "attachmentId": "attachment_abc123",
+  "matrixMessage": "[INFORM] Updated draft attached"
 }
 ```
 

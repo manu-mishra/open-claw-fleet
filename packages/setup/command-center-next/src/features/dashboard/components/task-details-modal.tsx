@@ -26,6 +26,8 @@ interface TaskDetailsModalProps {
     escalateToMatrixId: string | null;
   }) => Promise<void>;
   onAddComment: (taskId: string, message: string) => Promise<void>;
+  onUploadAttachment: (taskId: string, file: File) => Promise<void>;
+  onLinkAttachment: (taskId: string, sharedPath: string) => Promise<void>;
   onSearchPeople: (query: string) => Promise<DirectoryPerson[]>;
   onOpenTask: (taskId: string) => void;
   onCreateChildTask: (parentTask: Task) => void;
@@ -43,6 +45,8 @@ export function TaskDetailsModal({
   priorities,
   onSaveTask,
   onAddComment,
+  onUploadAttachment,
+  onLinkAttachment,
   onSearchPeople,
   onOpenTask,
   onCreateChildTask,
@@ -94,6 +98,8 @@ export function TaskDetailsModal({
           priorities={priorities}
           onSaveTask={onSaveTask}
           onAddComment={onAddComment}
+          onUploadAttachment={onUploadAttachment}
+          onLinkAttachment={onLinkAttachment}
           onSearchPeople={onSearchPeople}
           onOpenTask={onOpenTask}
           onCreateChildTask={onCreateChildTask}

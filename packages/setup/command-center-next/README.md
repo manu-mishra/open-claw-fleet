@@ -38,6 +38,8 @@ src/
 ## Data Source
 
 - This app is now both UI and API for Command Center on port `8090`.
+- Runtime state is persisted in PostgreSQL (`command_center_state` table). In container deployments, PostgreSQL runs inside the same Command Center container and stores data under `/data/postgres`.
+- You can still override via `COMMAND_CENTER_DATABASE_URL` or `PG*` env vars when using an external Postgres.
 - Service endpoints used by plugins/fleet-manager are exposed directly:
   - `GET/POST /api/agent/tasks`
   - `GET/PATCH /api/agent/tasks/:taskId`

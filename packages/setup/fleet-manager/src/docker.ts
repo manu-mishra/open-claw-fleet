@@ -16,6 +16,7 @@ export class DockerOrchestrator implements Orchestrator {
     // Convert container paths to host paths
     const hostWorkspace = spec.workspacePath.replace(/^\/app/, this.hostRoot);
     const hostRuntime = spec.runtimePath.replace(/^\/app/, this.hostRoot);
+    const hostShared = `${this.hostRoot}/config/environments/local/shared`;
     const hostHome = process.env.HOST_HOME;
 
     const container = await this.docker.createContainer({
@@ -28,6 +29,7 @@ export class DockerOrchestrator implements Orchestrator {
         `MATRIX_DOMAIN=${process.env.MATRIX_DOMAIN || 'anycompany.corp'}`,
         `COMMAND_CENTER_URL=${process.env.COMMAND_CENTER_URL || 'http://command-center:8090'}`,
         `COMMAND_CENTER_API_TOKEN=${process.env.COMMAND_CENTER_API_TOKEN || process.env.FLEET_SECRET || ''}`,
+        `AGENT_SHARED_ROOT=${process.env.AGENT_SHARED_ROOT || '/shared'}`,
         `FLEET_SECRET=${process.env.FLEET_SECRET || ''}`,
         `FLEET_SECRET_ARN=${process.env.FLEET_SECRET_ARN || ''}`,
         `AWS_REGION=${process.env.AWS_REGION || 'us-east-1'}`,
@@ -41,6 +43,7 @@ export class DockerOrchestrator implements Orchestrator {
         Binds: [
           `${hostWorkspace}:/workspace:rw`,
           `${hostRuntime}:/runtime:rw`,
+          `${hostShared}:/shared:rw`,
           ...(hostHome ? [`${hostHome}/.aws:/root/.aws:ro`] : []),
         ],
         NetworkMode: this.network,

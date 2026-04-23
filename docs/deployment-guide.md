@@ -24,6 +24,7 @@ This script will:
 - Deploy dev stack (VPC, ECS, services)
 - All services start at `desiredCount: 1`
 - Fleet Manager handles agent lifecycle (no manual scaling required)
+- Command Center runs as a single container with embedded PostgreSQL, backed by EFS persistence at `/data`
 
 ### 2. Connect to Element UI
 

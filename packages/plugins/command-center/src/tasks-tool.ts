@@ -1,6 +1,9 @@
 import { Type } from "@sinclair/typebox";
+import { createHmac, randomUUID } from "node:crypto";
+import { basename, extname } from "node:path";
+import { readFile } from "node:fs/promises";
 
-type TaskAction = "list" | "get" | "create" | "update" | "comment" | "escalate";
+type TaskAction = "list" | "get" | "create" | "update" | "comment" | "escalate" | "attachments" | "attach" | "matrix_file";
 type TaskStatus = "inbox" | "assigned" | "in_progress" | "review" | "done" | "blocked";
 type TaskPriority = "low" | "medium" | "high" | "urgent";
 type TaskWorkItemType = "epic" | "feature" | "story" | "task";
@@ -38,6 +41,16 @@ interface TaskRecord {
     message: string;
     createdAt: string;
   }>;
+  attachments?: Array<{
+    id: string;
+    fileName: string;
+    contentType: string;
+    sizeBytes: number;
+    sharedPath: string;
+    sourceKind: "upload" | "link";
+    createdAt: string;
+    createdByMatrixId: string;
+  }>;
 }
 
 interface CommandCenterListResponse {
@@ -47,10 +60,28 @@ interface CommandCenterListResponse {
   tasks: TaskRecord[];
 }
 
+interface AttachmentListResponse {
+  taskId: string;
+  count: number;
+  attachments: Array<{
+    id: string;
+    fileName: string;
+    contentType: string;
+    sizeBytes: number;
+    sharedPath: string;
+    sourceKind: "upload" | "link";
+    createdAt: string;
+    createdByMatrixId: string;
+  }>;
+}
+
 const COMMAND_CENTER_URL = (process.env.COMMAND_CENTER_URL || "http://command-center:8090").replace(/\/+$/, "");
 const COMMAND_CENTER_API_TOKEN = process.env.COMMAND_CENTER_API_TOKEN || "";
 const COMMAND_CENTER_TIMEOUT_MS = Number.parseInt(process.env.COMMAND_CENTER_TIMEOUT_MS || "10000", 10);
 const MATRIX_DOMAIN = process.env.MATRIX_DOMAIN || "anycompany.corp";
+const MATRIX_HOMESERVER = (process.env.MATRIX_HOMESERVER || "http://conduit:6167").replace(/\/+$/, "");
+const AGENT_MATRIX_ID = process.env.AGENT_MATRIX_ID || "";
+const FLEET_SECRET = process.env.FLEET_SECRET || "";
 const DEFAULT_ACTOR_MATRIX_ID = process.env.AGENT_MATRIX_ID || "";
 const TASK_STATUSES: TaskStatus[] = ["inbox", "assigned", "in_progress", "review", "done", "blocked"];
 const TASK_PRIORITIES: TaskPriority[] = ["low", "medium", "high", "urgent"];
@@ -118,6 +149,14 @@ function parseWorkItemType(value: unknown): TaskWorkItemType | null {
   return TASK_WORK_ITEM_TYPES.includes(candidate as TaskWorkItemType) ? (candidate as TaskWorkItemType) : null;
 }
 
+function parseOptionalString(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
 function validateStatusTransition(current: TaskStatus, next: TaskStatus): void {
   if (current === next) {
     return;
@@ -175,6 +214,84 @@ function buildEscalationMessage(input: {
   return lines.join("\n");
 }
 
+function contentTypeFromFileName(fileName: string, fallback = "application/octet-stream"): string {
+  switch (extname(fileName.toLowerCase())) {
+    case ".md":
+      return "text/markdown; charset=utf-8";
+    case ".txt":
+      return "text/plain; charset=utf-8";
+    case ".json":
+      return "application/json; charset=utf-8";
+    case ".js":
+      return "text/javascript; charset=utf-8";
+    case ".ts":
+      return "text/typescript; charset=utf-8";
+    case ".tsx":
+      return "text/tsx; charset=utf-8";
+    case ".jsx":
+      return "text/jsx; charset=utf-8";
+    case ".html":
+      return "text/html; charset=utf-8";
+    case ".css":
+      return "text/css; charset=utf-8";
+    case ".py":
+      return "text/x-python; charset=utf-8";
+    case ".go":
+      return "text/x-go; charset=utf-8";
+    case ".java":
+      return "text/x-java-source; charset=utf-8";
+    case ".c":
+      return "text/x-c; charset=utf-8";
+    case ".cpp":
+    case ".cc":
+    case ".cxx":
+      return "text/x-c++; charset=utf-8";
+    case ".rs":
+      return "text/rust; charset=utf-8";
+    case ".yml":
+    case ".yaml":
+      return "application/yaml; charset=utf-8";
+    case ".xml":
+      return "application/xml; charset=utf-8";
+    case ".pdf":
+      return "application/pdf";
+    case ".png":
+      return "image/png";
+    case ".jpg":
+    case ".jpeg":
+      return "image/jpeg";
+    case ".gif":
+      return "image/gif";
+    case ".webp":
+      return "image/webp";
+    case ".svg":
+      return "image/svg+xml";
+    default:
+      return fallback;
+  }
+}
+
+function normalizeLinkPathForTask(linkPath: string): string {
+  const trimmed = linkPath.trim();
+  if (!trimmed) {
+    throw new Error("linkPath cannot be empty");
+  }
+
+  const normalizedSlashes = trimmed.replace(/\\/g, "/");
+  if (normalizedSlashes.startsWith("/shared/")) {
+    const relative = normalizedSlashes.slice("/shared/".length);
+    if (!relative.trim()) {
+      throw new Error("linkPath must include a file under /shared");
+    }
+    return relative;
+  }
+  if (normalizedSlashes === "/shared") {
+    throw new Error("linkPath must include a file under /shared");
+  }
+
+  return normalizedSlashes.replace(/^\/+/, "");
+}
+
 async function commandCenterRequest<T>(
   path: string,
   method: "GET" | "POST" | "PATCH",
@@ -214,11 +331,247 @@ async function commandCenterRequest<T>(
   }
 }
 
+async function commandCenterFormRequest<T>(path: string, method: "POST", formData: FormData): Promise<T> {
+  const controller = new AbortController();
+  const timeout = setTimeout(
+    () => controller.abort(),
+    Number.isFinite(COMMAND_CENTER_TIMEOUT_MS) ? COMMAND_CENTER_TIMEOUT_MS : 10000,
+  );
+
+  try {
+    const response = await fetch(`${COMMAND_CENTER_URL}${path}`, {
+      method,
+      headers: {
+        ...(COMMAND_CENTER_API_TOKEN ? { "x-command-center-token": COMMAND_CENTER_API_TOKEN } : {}),
+      },
+      body: formData,
+      signal: controller.signal,
+    });
+
+    const text = await response.text();
+    const payload = parseJson(text);
+    if (!response.ok) {
+      const detail =
+        typeof payload === "object" && payload !== null && "error" in payload
+          ? String((payload as { error?: unknown }).error)
+          : text || response.statusText;
+      throw new Error(`Command Center request failed (${response.status}): ${detail}`);
+    }
+
+    return payload as T;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function parseContentDispositionFileName(contentDisposition: string | null): string | null {
+  if (!contentDisposition) {
+    return null;
+  }
+  const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8Match?.[1]) {
+    try {
+      return decodeURIComponent(utf8Match[1]);
+    } catch {
+      return utf8Match[1];
+    }
+  }
+  const plainMatch = contentDisposition.match(/filename="?([^";]+)"?/i);
+  return plainMatch?.[1] ?? null;
+}
+
+async function commandCenterBinaryRequest(path: string): Promise<{
+  bytes: Uint8Array<ArrayBufferLike>;
+  contentType: string;
+  fileName: string | null;
+}> {
+  const controller = new AbortController();
+  const timeout = setTimeout(
+    () => controller.abort(),
+    Number.isFinite(COMMAND_CENTER_TIMEOUT_MS) ? COMMAND_CENTER_TIMEOUT_MS : 10000,
+  );
+
+  try {
+    const response = await fetch(`${COMMAND_CENTER_URL}${path}`, {
+      method: "GET",
+      headers: {
+        ...(COMMAND_CENTER_API_TOKEN ? { "x-command-center-token": COMMAND_CENTER_API_TOKEN } : {}),
+      },
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Command Center binary request failed (${response.status}): ${text || response.statusText}`);
+    }
+
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    return {
+      bytes,
+      contentType: response.headers.get("content-type") || "application/octet-stream",
+      fileName: parseContentDispositionFileName(response.headers.get("content-disposition")),
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function deriveMatrixPassword(matrixId: string, secret: string): string {
+  return createHmac("sha256", secret).update(matrixId).digest("hex").slice(0, 32);
+}
+
+async function matrixJsonRequest<T>(
+  path: string,
+  method: "GET" | "POST" | "PUT",
+  token?: string,
+  body?: unknown,
+): Promise<T> {
+  const response = await fetch(`${MATRIX_HOMESERVER}${path}`, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  const text = await response.text();
+  const payload = parseJson(text);
+  if (!response.ok) {
+    throw new Error(`Matrix request failed (${response.status}): ${text || response.statusText}`);
+  }
+  return payload as T;
+}
+
+async function ensureMatrixToken(): Promise<string> {
+  if (!AGENT_MATRIX_ID.trim()) {
+    throw new Error("AGENT_MATRIX_ID is required for matrix_file action");
+  }
+  if (!FLEET_SECRET.trim()) {
+    throw new Error("FLEET_SECRET is required for matrix_file action");
+  }
+
+  const username = AGENT_MATRIX_ID.split(":")[0].replace(/^@/, "");
+  const password = deriveMatrixPassword(AGENT_MATRIX_ID, FLEET_SECRET);
+  const loginPayload = {
+    type: "m.login.password",
+    identifier: { type: "m.id.user", user: username },
+    password,
+  };
+
+  try {
+    const response = await matrixJsonRequest<{ access_token: string }>("/_matrix/client/r0/login", "POST", undefined, loginPayload);
+    return response.access_token;
+  } catch {
+    try {
+      await matrixJsonRequest("/_matrix/client/r0/register", "POST", undefined, {
+        username,
+        password,
+        auth: { type: "m.login.dummy" },
+      });
+    } catch {
+      // ignore if already exists
+    }
+    const response = await matrixJsonRequest<{ access_token: string }>("/_matrix/client/r0/login", "POST", undefined, loginPayload);
+    return response.access_token;
+  }
+}
+
+function matrixMsgType(contentType: string): "m.file" | "m.image" | "m.video" | "m.audio" {
+  const normalized = contentType.toLowerCase();
+  if (normalized.startsWith("image/")) return "m.image";
+  if (normalized.startsWith("video/")) return "m.video";
+  if (normalized.startsWith("audio/")) return "m.audio";
+  return "m.file";
+}
+
+async function uploadToMatrix(
+  token: string,
+  fileName: string,
+  contentType: string,
+  bytes: Uint8Array<ArrayBufferLike>,
+): Promise<string> {
+  const query = `?filename=${encodeURIComponent(fileName)}`;
+  const endpoints = ["/_matrix/media/v3/upload", "/_matrix/media/r0/upload"];
+  let lastError: Error | null = null;
+
+  for (const endpoint of endpoints) {
+    try {
+      const response = await fetch(`${MATRIX_HOMESERVER}${endpoint}${query}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": contentType || "application/octet-stream",
+          Authorization: `Bearer ${token}`,
+        },
+        body: Buffer.from(bytes),
+      });
+      const payload = parseJson(await response.text());
+      if (!response.ok) {
+        throw new Error(`upload failed (${response.status})`);
+      }
+      const contentUri = typeof payload === "object" && payload !== null ? (payload as { content_uri?: unknown }).content_uri : null;
+      if (typeof contentUri !== "string" || !contentUri.startsWith("mxc://")) {
+        throw new Error("matrix upload did not return content_uri");
+      }
+      return contentUri;
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error("Unknown matrix upload error");
+    }
+  }
+
+  throw lastError ?? new Error("Matrix upload failed");
+}
+
+async function sendMatrixFileMessage(input: {
+  roomId: string;
+  threadRootEventId?: string | null;
+  message?: string | null;
+  fileName: string;
+  contentType: string;
+  bytes: Uint8Array<ArrayBufferLike>;
+}): Promise<{ mxcUri: string; eventId: string }> {
+  const token = await ensureMatrixToken();
+  const mxcUri = await uploadToMatrix(token, input.fileName, input.contentType, input.bytes);
+  const eventId = randomUUID();
+  const payload: Record<string, unknown> = {
+    msgtype: matrixMsgType(input.contentType),
+    body: (input.message || "").trim() || input.fileName,
+    filename: input.fileName,
+    url: mxcUri,
+    info: {
+      mimetype: input.contentType || "application/octet-stream",
+      size: input.bytes.byteLength,
+    },
+  };
+
+  const threadRootEventId = (input.threadRootEventId || "").trim();
+  if (threadRootEventId) {
+    payload["m.relates_to"] = {
+      rel_type: "m.thread",
+      event_id: threadRootEventId,
+      is_falling_back: true,
+      "m.in_reply_to": {
+        event_id: threadRootEventId,
+      },
+    };
+  }
+
+  const response = await matrixJsonRequest<{ event_id: string }>(
+    `/_matrix/client/r0/rooms/${encodeURIComponent(input.roomId)}/send/m.room.message/${encodeURIComponent(eventId)}`,
+    "PUT",
+    token,
+    payload,
+  );
+
+  return {
+    mxcUri,
+    eventId: response.event_id,
+  };
+}
+
 export function createTasksTool() {
   return {
     name: "tasks",
     description:
-      "Manage Command Center work items (epic, feature, story, task) across stages (inbox, assigned, in_progress, review, done, blocked). Actions: list, get, create, update, comment, escalate.",
+      "Manage Command Center work items (epic, feature, story, task) across stages (inbox, assigned, in_progress, review, done, blocked), plus file operations. You can upload local files to tasks (filePath), link shared files (linkPath), list attachments, and send files to Matrix. Actions: list, get, create, update, comment, escalate, attachments, attach, matrix_file.",
     parameters: Type.Object({
       action: Type.Union(
         [
@@ -228,10 +581,13 @@ export function createTasksTool() {
           Type.Literal("update"),
           Type.Literal("comment"),
           Type.Literal("escalate"),
+          Type.Literal("attachments"),
+          Type.Literal("attach"),
+          Type.Literal("matrix_file"),
         ],
-        { description: "Task action: list, get, create, update, comment, escalate" },
+        { description: "Task action: list, get, create, update, comment, escalate, attachments, attach, matrix_file" },
       ),
-      taskId: Type.Optional(Type.String({ description: "Task ID for get/update/comment/escalate" })),
+      taskId: Type.Optional(Type.String({ description: "Task ID for get/update/comment/escalate/attachments/attach/matrix_file" })),
       title: Type.Optional(Type.String({ description: "Task title for create/update" })),
       description: Type.Optional(Type.String({ description: "Task description for create/update" })),
       workItemType: Type.Optional(
@@ -277,10 +633,19 @@ export function createTasksTool() {
       reason: Type.Optional(Type.String({ description: "Escalation reason for escalate action" })),
       impact: Type.Optional(Type.String({ description: "Business or delivery impact for escalate action" })),
       setBlocked: Type.Optional(Type.Boolean({ description: "Escalate action: set task stage to blocked (default true)" })),
-      query: Type.Optional(Type.String({ description: "Free text search in list action" })),
+      query: Type.Optional(Type.String({ description: "Full-text search across task id/title/description/definition-of-done/comments/tags" })),
       limit: Type.Optional(Type.Number({ description: "Max list results (default 20, max 200)" })),
       includeDone: Type.Optional(Type.Boolean({ description: "Include done tasks in list (default true)" })),
       mine: Type.Optional(Type.Boolean({ description: "Shortcut for list: assignee=actor" })),
+      filePath: Type.Optional(Type.String({ description: "Local file path to upload/send. For attach: uploads file into task attachments." })),
+      fileName: Type.Optional(Type.String({ description: "Optional file name override for attach/matrix_file" })),
+      contentType: Type.Optional(Type.String({ description: "Optional MIME type override for attach/matrix_file" })),
+      linkPath: Type.Optional(Type.String({ description: "Shared storage path for attach link mode (relative or /shared/...). Use for cross-agent shared files." })),
+      attachmentId: Type.Optional(Type.String({ description: "Existing task attachment ID (matrix_file action)" })),
+      roomId: Type.Optional(Type.String({ description: "Target Matrix room ID (matrix_file action). If omitted and taskId is set, uses task room." })),
+      threadRootEventId: Type.Optional(Type.String({ description: "Optional Matrix thread root event ID (matrix_file/attach sendToMatrix)." })),
+      matrixMessage: Type.Optional(Type.String({ description: "Message body for matrix_file or attach sendToMatrix" })),
+      sendToMatrix: Type.Optional(Type.Boolean({ description: "Attach action: also send uploaded/linked file to task Matrix thread" })),
       actorMatrixId: Type.Optional(Type.String({ description: "Actor matrix ID; defaults to AGENT_MATRIX_ID" })),
     }),
 
@@ -666,6 +1031,203 @@ export function createTasksTool() {
                 `nextAction: ${nextAction}`,
                 `blockedOwner: ${blockerOwnerMatrixId ?? "unspecified"}`,
                 `escalateTo: ${escalateToMatrixId ?? "unspecified"}`,
+              ].join("\n"),
+            },
+          ],
+        };
+      }
+
+      if (action === "attachments") {
+        const taskId = String(params.taskId ?? "").trim();
+        if (!taskId) {
+          throw new Error("taskId is required for attachments");
+        }
+
+        const payload = await commandCenterRequest<AttachmentListResponse>(
+          `/api/agent/tasks/${encodeURIComponent(taskId)}/attachments`,
+          "GET",
+        );
+
+        const lines = payload.attachments.map(
+          (entry) =>
+            `${entry.id} | ${entry.fileName} | ${entry.contentType} | ${entry.sizeBytes} bytes | ${entry.sourceKind} | path=${entry.sharedPath} | by=${entry.createdByMatrixId} | at=${entry.createdAt}`,
+        );
+        return {
+          content: [
+            {
+              type: "text",
+              text: lines.length > 0 ? lines.join("\n") : "No attachments found",
+            },
+          ],
+        };
+      }
+
+      if (action === "attach") {
+        const taskId = String(params.taskId ?? "").trim();
+        if (!taskId) {
+          throw new Error("taskId is required for attach");
+        }
+
+        const filePath = parseOptionalString(params.filePath);
+        const linkPathRaw = parseOptionalString(params.linkPath);
+        if (!filePath && !linkPathRaw) {
+          throw new Error("attach requires either filePath (upload) or linkPath (shared-link)");
+        }
+        if (filePath && linkPathRaw) {
+          throw new Error("Provide only one of filePath or linkPath");
+        }
+
+        let task: TaskRecord;
+        let attachedFileName = "attachment";
+        let attachedContentType = "application/octet-stream";
+        let attachedBytes: Uint8Array<ArrayBufferLike> = new Uint8Array(0);
+
+        if (filePath) {
+          const bytes = await readFile(filePath);
+          if (bytes.byteLength <= 0) {
+            throw new Error(`Attachment file is empty: ${filePath}`);
+          }
+          attachedFileName = parseOptionalString(params.fileName) ?? basename(filePath);
+          attachedContentType = parseOptionalString(params.contentType) ?? contentTypeFromFileName(attachedFileName);
+          attachedBytes = bytes;
+
+          const form = new FormData();
+          form.set("actorMatrixId", actorMatrixId);
+          form.set("file", new Blob([bytes], { type: attachedContentType }), attachedFileName);
+          task = await commandCenterFormRequest<TaskRecord>(
+            `/api/agent/tasks/${encodeURIComponent(taskId)}/attachments`,
+            "POST",
+            form,
+          );
+        } else {
+          const normalizedLinkPath = normalizeLinkPathForTask(linkPathRaw as string);
+          const payload = {
+            actorMatrixId,
+            linkPath: normalizedLinkPath,
+            ...(parseOptionalString(params.fileName) ? { fileName: parseOptionalString(params.fileName) } : {}),
+            ...(parseOptionalString(params.contentType) ? { contentType: parseOptionalString(params.contentType) } : {}),
+          };
+          task = await commandCenterRequest<TaskRecord>(
+            `/api/agent/tasks/${encodeURIComponent(taskId)}/attachments`,
+            "POST",
+            payload,
+          );
+
+          const listPayload = await commandCenterRequest<AttachmentListResponse>(
+            `/api/agent/tasks/${encodeURIComponent(taskId)}/attachments`,
+            "GET",
+          );
+          const linkedAttachment = listPayload.attachments.find((entry) => entry.sharedPath === normalizedLinkPath);
+          if (linkedAttachment) {
+            attachedFileName = linkedAttachment.fileName;
+            attachedContentType = linkedAttachment.contentType || contentTypeFromFileName(linkedAttachment.fileName);
+            const binary = await commandCenterBinaryRequest(
+              `/api/agent/tasks/${encodeURIComponent(taskId)}/attachments/${encodeURIComponent(linkedAttachment.id)}?inline=true`,
+            );
+            attachedBytes = binary.bytes;
+          }
+        }
+
+        const sendToMatrix = params.sendToMatrix === true;
+        let matrixLine = "";
+        if (sendToMatrix) {
+          const roomId = parseOptionalString(params.roomId) ?? task.matrixRoomId ?? null;
+          if (!roomId) {
+            throw new Error("sendToMatrix=true requires roomId or task with matrixRoomId");
+          }
+          if (attachedBytes.byteLength <= 0) {
+            throw new Error("sendToMatrix=true requires readable file content");
+          }
+          const threadRootEventId = parseOptionalString(params.threadRootEventId) ?? task.matrixThreadRootEventId ?? null;
+          const matrixMessage =
+            parseOptionalString(params.matrixMessage)
+            ?? `[ATTACHMENT] ${attachedFileName} added to ${task.id} by ${actorMatrixId}`;
+          const sent = await sendMatrixFileMessage({
+            roomId,
+            threadRootEventId,
+            message: matrixMessage,
+            fileName: attachedFileName,
+            contentType: attachedContentType,
+            bytes: attachedBytes,
+          });
+          matrixLine = `\nMatrix message sent: room=${roomId} event=${sent.eventId} uri=${sent.mxcUri}`;
+        }
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Attached file to ${task.id}: ${attachedFileName} (${attachedContentType}, ${attachedBytes.byteLength} bytes).${matrixLine}`,
+            },
+          ],
+        };
+      }
+
+      if (action === "matrix_file") {
+        const taskId = parseOptionalString(params.taskId);
+        const roomIdParam = parseOptionalString(params.roomId);
+        const threadRootEventIdParam = parseOptionalString(params.threadRootEventId);
+        const attachmentId = parseOptionalString(params.attachmentId);
+        const filePath = parseOptionalString(params.filePath);
+
+        let task: TaskRecord | null = null;
+        if (taskId) {
+          task = await commandCenterRequest<TaskRecord>(`/api/agent/tasks/${encodeURIComponent(taskId)}`, "GET");
+        }
+
+        const roomId = roomIdParam ?? task?.matrixRoomId ?? null;
+        if (!roomId) {
+          throw new Error("matrix_file requires roomId or taskId with matrixRoomId");
+        }
+        const threadRootEventId = threadRootEventIdParam ?? task?.matrixThreadRootEventId ?? null;
+
+        let bytes: Uint8Array<ArrayBufferLike> = new Uint8Array(0);
+        let fileName = parseOptionalString(params.fileName) ?? "attachment";
+        let contentType = parseOptionalString(params.contentType) ?? "application/octet-stream";
+
+        if (attachmentId) {
+          if (!taskId) {
+            throw new Error("attachmentId requires taskId");
+          }
+          const binary = await commandCenterBinaryRequest(
+            `/api/agent/tasks/${encodeURIComponent(taskId)}/attachments/${encodeURIComponent(attachmentId)}?inline=true`,
+          );
+          bytes = binary.bytes;
+          fileName = parseOptionalString(params.fileName) ?? binary.fileName ?? attachmentId;
+          contentType = parseOptionalString(params.contentType) ?? binary.contentType ?? contentTypeFromFileName(fileName);
+        } else {
+          if (!filePath) {
+            throw new Error("matrix_file requires either filePath or attachmentId");
+          }
+          const buffer = await readFile(filePath);
+          if (buffer.byteLength <= 0) {
+            throw new Error(`File is empty: ${filePath}`);
+          }
+          bytes = buffer;
+          fileName = parseOptionalString(params.fileName) ?? basename(filePath);
+          contentType = parseOptionalString(params.contentType) ?? contentTypeFromFileName(fileName);
+        }
+
+        const matrixMessage = parseOptionalString(params.matrixMessage) ?? parseOptionalString(params.message) ?? fileName;
+        const sent = await sendMatrixFileMessage({
+          roomId,
+          threadRootEventId,
+          message: matrixMessage,
+          fileName,
+          contentType,
+          bytes,
+        });
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: [
+                `Sent file to Matrix room ${roomId}`,
+                `eventId: ${sent.eventId}`,
+                `mxcUri: ${sent.mxcUri}`,
+                `file: ${fileName} (${contentType}, ${bytes.byteLength} bytes)`,
+                `threadRootEventId: ${threadRootEventId ?? "(none)"}`,
               ].join("\n"),
             },
           ],

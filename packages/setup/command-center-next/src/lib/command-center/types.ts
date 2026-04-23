@@ -19,6 +19,17 @@ export interface TaskComment {
   createdAt: string;
 }
 
+export interface TaskAttachment {
+  id: string;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+  sharedPath: string;
+  sourceKind: "upload" | "link";
+  createdAt: string;
+  createdByMatrixId: string;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -47,6 +58,7 @@ export interface Task {
   createdAt: string;
   updatedAt: string;
   comments: TaskComment[];
+  attachments?: TaskAttachment[];
 }
 
 export interface AgentSummary {
@@ -92,4 +104,42 @@ export interface DashboardSnapshot {
   activity: ActivityEvent[];
   source: "live" | "mock";
   fetchedAt: string;
+}
+
+export interface WbrEntrySummary {
+  taskId: string;
+  title: string;
+  status: TaskStatus;
+  assigneeMatrixId: string | null;
+  assigneeName: string;
+  vpMatrixId: string | null;
+  updatedAt: string;
+}
+
+export interface WbrDepartmentSummary {
+  department: string;
+  vpMatrixId: string | null;
+  expectedDirectors: number;
+  totalEntries: number;
+  submitted: number;
+  pending: number;
+  blocked: number;
+  overdue: number;
+  latestUpdatedAt: string | null;
+  entries: WbrEntrySummary[];
+}
+
+export interface WbrWeeklySummary {
+  weekStart: string;
+  generatedAt: string;
+  totals: {
+    departments: number;
+    expectedDirectors: number;
+    totalEntries: number;
+    submitted: number;
+    pending: number;
+    blocked: number;
+    overdue: number;
+  };
+  departments: WbrDepartmentSummary[];
 }

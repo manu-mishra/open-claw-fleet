@@ -42,13 +42,22 @@ services:
       ORG_DEPLOYED_FILE_PATH: /data/workspaces/deployed-org.json
       COMMAND_CENTER_API_TOKEN: ${FLEET_SECRET}
       MATRIX_PASSWORD_SEED: ${FLEET_SECRET}
+      COMMAND_CENTER_DB_MODE: postgres
+      SHARED_FILES_ROOT: /data/shared
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGDATABASE: command_center
+      PGUSER: command_center
+      PGPASSWORD: ${FLEET_SECRET}
     ports:
       - "8090:8090"
     volumes:
       - ${HOST_ROOT}/config/environments/local/workspaces:/data/workspaces:ro
       - command_center_data:/data/command-center
+      - ${HOST_ROOT}/config/environments/local/shared:/data/shared
     depends_on:
-      - conduit
+      conduit:
+        condition: service_started
     networks:
       - fleet
 
@@ -60,6 +69,7 @@ services:
       FLEET_SECRET: ${FLEET_SECRET}
       COMMAND_CENTER_URL: http://command-center:8090
       COMMAND_CENTER_API_TOKEN: ${FLEET_SECRET}
+      AGENT_SHARED_ROOT: /shared
       HOST_ROOT: ${HOST_ROOT}
       HOST_HOME: ${HOST_HOME:-${HOME}}
       AWS_REGION: us-east-1

@@ -71,6 +71,7 @@ ensure_env() {
   if [ -n "${AWS_PROFILE:-}" ]; then
     export AWS_PROFILE
   fi
+  mkdir -p "$HOST_ROOT/config/environments/local/shared"
 }
 
 remove_agents() {

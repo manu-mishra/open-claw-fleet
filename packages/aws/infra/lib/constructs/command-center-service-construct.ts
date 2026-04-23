@@ -76,6 +76,12 @@ export class CommandCenterServiceConstruct extends Construct {
       },
     });
 
+    const logGroup = new logs.LogGroup(this, 'LogGroup', {
+      logGroupName: `/ecs/command-center-${props.environment}`,
+      retention: logs.RetentionDays.ONE_WEEK,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
     const volumeName = 'command-center-data';
     taskDef.addVolume({
       name: volumeName,
@@ -96,15 +102,13 @@ export class CommandCenterServiceConstruct extends Construct {
       image: ecs.ContainerImage.fromRegistry(props.repoUri),
       logging: ecs.LogDrivers.awsLogs({
         streamPrefix: 'command-center',
-        logGroup: new logs.LogGroup(this, 'LogGroup', {
-          logGroupName: `/ecs/command-center-${props.environment}`,
-          retention: logs.RetentionDays.ONE_WEEK,
-          removalPolicy: cdk.RemovalPolicy.DESTROY,
-        }),
+        logGroup,
       }),
       environment: {
         PORT: '8090',
         DATA_DIR: '/data/command-center',
+        SHARED_FILES_ROOT: '/data/shared',
+        POSTGRES_DATA_DIR: '/data/postgres',
         ORG_FILE_PATH: '/data/workspaces/org.json',
         ORG_DEPLOYED_FILE_PATH: '/data/workspaces/deployed-org.json',
         WORKSPACES_ROOT: '/data/workspaces',
@@ -114,10 +118,16 @@ export class CommandCenterServiceConstruct extends Construct {
         COMMAND_CENTER_API_BASE_URL: 'http://127.0.0.1:8090',
         NEXT_PUBLIC_COMMAND_CENTER_API_BASE_URL: `http://command-center.${props.namespace.namespaceName}:8090`,
         TASK_ASSIGNMENT_BOT_MATRIX_ID: `@task.assignments:${props.namespace.namespaceName}`,
+        COMMAND_CENTER_DB_MODE: 'postgres',
+        PGHOST: '127.0.0.1',
+        PGPORT: '5432',
+        PGDATABASE: 'command_center',
+        PGUSER: 'command_center',
       },
       secrets: {
         COMMAND_CENTER_API_TOKEN: ecs.Secret.fromSecretsManager(fleetSecret, 'secret'),
         MATRIX_PASSWORD_SEED: ecs.Secret.fromSecretsManager(fleetSecret, 'secret'),
+        PGPASSWORD: ecs.Secret.fromSecretsManager(fleetSecret, 'secret'),
       },
       portMappings: [{ containerPort: 8090 }],
     }).addMountPoints({
